@@ -77,6 +77,11 @@ func (r *CorootReconciler) clusterAgentClusterRole(cr *corootv1.Coroot) *rbacv1.
 				Resources: []string{"*"},
 				Verbs:     verbs,
 			},
+			{
+				APIGroups: []string{"argoproj.io"},
+				Resources: []string{"applications", "applicationsets", "appprojects"},
+				Verbs:     verbs,
+			},
 		},
 	}
 	return role
@@ -126,8 +131,6 @@ func (r *CorootReconciler) clusterAgentDeployment(cr *corootv1.Coroot) *appsv1.D
 		env = append(env, e)
 	}
 	image := r.getAppImage(cr, AppClusterAgent)
-	ksmImage := r.getAppImage(cr, AppKubeStateMetrics)
-
 	volumeMounts := []corev1.VolumeMount{
 		{Name: "tmp", MountPath: "/tmp"},
 	}
@@ -180,22 +183,6 @@ func (r *CorootReconciler) clusterAgentDeployment(cr *corootv1.Coroot) *appsv1.D
 						Resources:    cr.Spec.ClusterAgent.Resources,
 						VolumeMounts: volumeMounts,
 						Env:          env,
-					},
-					{
-						Image:           ksmImage.Name,
-						ImagePullPolicy: ksmImage.PullPolicy,
-						Name:            "kube-state-metrics",
-						Args: []string{
-							"--host=127.0.0.1",
-							"--port=10302",
-							"--resources=namespaces,nodes,daemonsets,deployments,cronjobs,jobs,persistentvolumeclaims,persistentvolumes,pods,replicasets,services,endpoints,statefulsets,storageclasses,volumeattachments",
-							"--metric-labels-allowlist=pods=[*]",
-							"--metric-annotations-allowlist=*=[coroot.com/application-category,coroot.com/custom-application-name]",
-						},
-						Resources: corev1.ResourceRequirements{
-							Requests: cr.Spec.ClusterAgent.Resources.Requests,
-							Limits:   cr.Spec.ClusterAgent.Resources.Limits,
-						},
 					},
 				},
 				Volumes: volumes,

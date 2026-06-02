@@ -15,9 +15,8 @@ import (
 )
 
 const (
-	ClickhouseImage       = "clickhouse:25.11.2-ubi9-0"
-	PrometheusImage       = "prometheus:2.55.1-ubi9-0"
-	KubeStateMetricsImage = "kube-state-metrics:2.15.0-ubi9-0"
+	ClickhouseImage = "clickhouse:25.11.2-ubi9-0"
+	PrometheusImage = "prometheus:2.55.1-ubi9-0"
 )
 
 type App string
@@ -30,7 +29,6 @@ const (
 	AppClickhouse       App = "clickhouse"
 	AppClickhouseKeeper App = "clickhouse-keeper"
 	AppPrometheus       App = "prometheus"
-	AppKubeStateMetrics App = "kube-state-metrics"
 )
 
 func (r *CorootReconciler) getAppImage(cr *corootv1.Coroot, app App) corootv1.ImageSpec {
@@ -44,8 +42,6 @@ func (r *CorootReconciler) getAppImage(cr *corootv1.Coroot, app App) corootv1.Im
 		image = cr.Spec.NodeAgent.Image
 	case AppClusterAgent:
 		image = cr.Spec.ClusterAgent.Image
-	case AppKubeStateMetrics:
-		image = cr.Spec.ClusterAgent.KubeStateMetrics.Image
 	case AppClickhouse:
 		image = cr.Spec.Clickhouse.Image
 	case AppClickhouseKeeper:
@@ -89,7 +85,6 @@ func (r *CorootReconciler) fetchAppVersions() {
 	r.versions[AppClickhouse] = r.RegistryConfig.Image(ClickhouseImage)
 	r.versions[AppClickhouseKeeper] = r.RegistryConfig.Image(ClickhouseImage)
 	r.versions[AppPrometheus] = r.RegistryConfig.Image(PrometheusImage)
-	r.versions[AppKubeStateMetrics] = r.RegistryConfig.Image(KubeStateMetricsImage)
 }
 
 func (r *CorootReconciler) fetchAppVersion(app App) (string, error) {
