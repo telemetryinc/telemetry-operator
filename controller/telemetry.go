@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	corootv1 "github.io/coroot/operator/api/v1"
+	telemetryv1 "github.com/telemetryinc/telemetry-operator/api/v1"
 	"golang.org/x/exp/maps"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func (r *CorootReconciler) validateCoroot(ctx context.Context, cr *corootv1.Coroot, configEnvs ConfigEnvs) []string {
+func (r *TelemetryReconciler) validateTelemetry(ctx context.Context, cr *telemetryv1.Telemetry, configEnvs ConfigEnvs) []string {
 	logger := log.FromContext(ctx)
 	var errors []string
 	logErr := func(msg string, args ...any) {
@@ -33,7 +33,7 @@ func (r *CorootReconciler) validateCoroot(ctx context.Context, cr *corootv1.Coro
 	}
 
 	if cr.Spec.Replicas > 1 && cr.Spec.Postgres == nil {
-		logErr("Coroot requires Postgres to run multiple replicas. Falling back to 1 replica.")
+		logErr("Telemetry requires Postgres to run multiple replicas. Falling back to 1 replica.")
 		cr.Spec.Replicas = 1
 	}
 
@@ -89,36 +89,21 @@ func (r *CorootReconciler) validateCoroot(ctx context.Context, cr *corootv1.Coro
 		}
 	}
 
-	if cc := cr.Spec.CorootCloud; cc != nil {
-		if cc.APIKeySecret != nil {
-			if _, err = r.GetSecret(ctx, cr, cc.APIKeySecret); err != nil {
-				logErr("Failed to get Coroot Cloud API Key: %s", err.Error())
-			} else {
-				cc.APIKey = configEnvs.Add(cc.APIKeySecret)
-			}
-			cc.APIKeySecret = nil
-		}
-		if cc.APIKey == "" {
-			logErr("Coroot Cloud API key is required.")
-			cr.Spec.CorootCloud = nil
-		}
-	}
-
 	apiKeySecrets := map[string][]string{}
 	for i := range cr.Spec.Projects {
 		p := &cr.Spec.Projects[i]
-		if rc := p.RemoteCoroot; rc != nil {
+		if rc := p.RemoteTelemetry; rc != nil {
 			if rc.ApiKeySecret != nil {
 				if _, err = r.GetSecret(ctx, cr, rc.ApiKeySecret); err != nil {
-					logErr("Failed to get Remote Coroot API Key: %s", err.Error())
+					logErr("Failed to get Remote Telemetry API Key: %s", err.Error())
 				} else {
 					rc.ApiKey = configEnvs.Add(rc.ApiKeySecret)
 				}
 				rc.ApiKeySecret = nil
 			}
 			if rc.Url == "" || rc.ApiKey == "" || rc.MetricResolution == "" {
-				logErr("Remote Coroot requires url, apiKey, and metricResolution.")
-				p.RemoteCoroot = nil
+				logErr("Remote Telemetry requires url, apiKey, and metricResolution.")
+				p.RemoteTelemetry = nil
 			}
 		}
 		for i, k := range p.ApiKeys {
@@ -212,124 +197,117 @@ func (r *CorootReconciler) validateCoroot(ctx context.Context, cr *corootv1.Coro
 		r.CreateOrUpdateSecret(ctx, cr, name, keys, 32, true)
 	}
 
-	if ee := cr.Spec.EnterpriseEdition; ee != nil {
-		if ee.LicenseKeySecret != nil {
-			if _, err = r.GetSecret(ctx, cr, ee.LicenseKeySecret); err != nil {
-				logErr("Failed to get License Key: %s.", err.Error())
-			}
-		}
-		if sso := cr.Spec.SSO; sso != nil && sso.Enabled {
-			valid := false
-			if oidc := sso.OIDC; oidc != nil {
-				if oidc.ClientSecretSecret != nil {
-					if _, err = r.GetSecret(ctx, cr, oidc.ClientSecretSecret); err != nil {
-						logErr("Failed to get OIDC Client Secret: %s", err.Error())
-					} else {
-						oidc.ClientSecret = configEnvs.Add(oidc.ClientSecretSecret)
-					}
-					oidc.ClientSecretSecret = nil
-				}
-				if oidc.IssuerURL != "" && oidc.ClientID != "" && oidc.ClientSecret != "" {
-					sso.Provider = "oidc"
-					valid = true
+	if sso := cr.Spec.SSO; sso != nil && sso.Enabled {
+		valid := false
+		if oidc := sso.OIDC; oidc != nil {
+			if oidc.ClientSecretSecret != nil {
+				if _, err = r.GetSecret(ctx, cr, oidc.ClientSecretSecret); err != nil {
+					logErr("Failed to get OIDC Client Secret: %s", err.Error())
 				} else {
-					logErr("OIDC SSO requires issuerURL, clientID, and clientSecret")
+					oidc.ClientSecret = configEnvs.Add(oidc.ClientSecretSecret)
 				}
-			} else if saml := sso.SAML; saml != nil {
-				metadata := saml.Metadata
-				if saml.MetadataSecret != nil {
-					if metadata, err = r.GetSecret(ctx, cr, saml.MetadataSecret); err != nil {
-						logErr("Failed to get SAML Identity Provider Metadata: %s", err.Error())
-					} else {
-						saml.Metadata = configEnvs.Add(saml.MetadataSecret)
-					}
-					saml.MetadataSecret = nil
-				}
-				if metadata != "" {
-					if err = ValidateSamlIdentityProviderMetadata(metadata); err != nil {
-						logErr("Invalid SAML Identity Provider Metadata: %s", err.Error())
-						saml.Metadata = ""
-					} else {
-						sso.Provider = "saml"
-						valid = true
-					}
-				}
+				oidc.ClientSecretSecret = nil
+			}
+			if oidc.IssuerURL != "" && oidc.ClientID != "" && oidc.ClientSecret != "" {
+				sso.Provider = "oidc"
+				valid = true
 			} else {
-				logErr("SSO is enabled but neither saml nor oidc configuration is provided")
+				logErr("OIDC SSO requires issuerURL, clientID, and clientSecret")
 			}
-			if !valid {
-				sso.Enabled = false
+		} else if saml := sso.SAML; saml != nil {
+			metadata := saml.Metadata
+			if saml.MetadataSecret != nil {
+				if metadata, err = r.GetSecret(ctx, cr, saml.MetadataSecret); err != nil {
+					logErr("Failed to get SAML Identity Provider Metadata: %s", err.Error())
+				} else {
+					saml.Metadata = configEnvs.Add(saml.MetadataSecret)
+				}
+				saml.MetadataSecret = nil
 			}
+			if metadata != "" {
+				if err = ValidateSamlIdentityProviderMetadata(metadata); err != nil {
+					logErr("Invalid SAML Identity Provider Metadata: %s", err.Error())
+					saml.Metadata = ""
+				} else {
+					sso.Provider = "saml"
+					valid = true
+				}
+			}
+		} else {
+			logErr("SSO is enabled but neither saml nor oidc configuration is provided")
 		}
-		if ai := cr.Spec.AI; ai != nil && ai.Provider != "" {
-			switch ai.Provider {
-			case "anthropic":
-				if anthropic := ai.Anthropic; anthropic != nil {
-					if anthropic.APIKeySecret != nil {
-						if _, err = r.GetSecret(ctx, cr, anthropic.APIKeySecret); err != nil {
-							logErr("Failed to get Anthropic API Key: %s", err.Error())
-						} else {
-							anthropic.APIKey = configEnvs.Add(anthropic.APIKeySecret)
-						}
-						anthropic.APIKeySecret = nil
+		if !valid {
+			sso.Enabled = false
+		}
+	}
+	if ai := cr.Spec.AI; ai != nil && ai.Provider != "" {
+		switch ai.Provider {
+		case "anthropic":
+			if anthropic := ai.Anthropic; anthropic != nil {
+				if anthropic.APIKeySecret != nil {
+					if _, err = r.GetSecret(ctx, cr, anthropic.APIKeySecret); err != nil {
+						logErr("Failed to get Anthropic API Key: %s", err.Error())
+					} else {
+						anthropic.APIKey = configEnvs.Add(anthropic.APIKeySecret)
 					}
-					if anthropic.APIKey == "" {
-						ai.Anthropic = nil
-					}
+					anthropic.APIKeySecret = nil
 				}
-				if ai.Anthropic == nil {
-					ai.Provider = ""
+				if anthropic.APIKey == "" {
+					ai.Anthropic = nil
 				}
-			case "openai":
-				if openai := ai.OpenAI; openai != nil {
-					if openai.APIKeySecret != nil {
-						if _, err = r.GetSecret(ctx, cr, openai.APIKeySecret); err != nil {
-							logErr("Failed to get OpenAI API Key: %s", err.Error())
-						} else {
-							openai.APIKey = configEnvs.Add(openai.APIKeySecret)
-						}
-						openai.APIKeySecret = nil
-					}
-					if openai.APIKey == "" {
-						ai.OpenAI = nil
-					}
-				}
-				if ai.OpenAI == nil {
-					ai.Provider = ""
-				}
-			case "openai_compatible":
-				if openaiCompatible := ai.OpenAICompatible; openaiCompatible != nil {
-					if openaiCompatible.APIKeySecret != nil {
-						if _, err = r.GetSecret(ctx, cr, openaiCompatible.APIKeySecret); err != nil {
-							logErr("Failed to get API Key: %s", err.Error())
-						} else {
-							openaiCompatible.APIKey = configEnvs.Add(openaiCompatible.APIKeySecret)
-						}
-						openaiCompatible.APIKeySecret = nil
-					}
-					if openaiCompatible.APIKey == "" {
-						ai.OpenAICompatible = nil
-					}
-				}
-				if ai.OpenAICompatible == nil {
-					ai.Provider = ""
-				}
-			default:
-				logErr("Unknown AI model provider: %s", ai.Provider)
+			}
+			if ai.Anthropic == nil {
 				ai.Provider = ""
 			}
+		case "openai":
+			if openai := ai.OpenAI; openai != nil {
+				if openai.APIKeySecret != nil {
+					if _, err = r.GetSecret(ctx, cr, openai.APIKeySecret); err != nil {
+						logErr("Failed to get OpenAI API Key: %s", err.Error())
+					} else {
+						openai.APIKey = configEnvs.Add(openai.APIKeySecret)
+					}
+					openai.APIKeySecret = nil
+				}
+				if openai.APIKey == "" {
+					ai.OpenAI = nil
+				}
+			}
+			if ai.OpenAI == nil {
+				ai.Provider = ""
+			}
+		case "openai_compatible":
+			if openaiCompatible := ai.OpenAICompatible; openaiCompatible != nil {
+				if openaiCompatible.APIKeySecret != nil {
+					if _, err = r.GetSecret(ctx, cr, openaiCompatible.APIKeySecret); err != nil {
+						logErr("Failed to get API Key: %s", err.Error())
+					} else {
+						openaiCompatible.APIKey = configEnvs.Add(openaiCompatible.APIKeySecret)
+					}
+					openaiCompatible.APIKeySecret = nil
+				}
+				if openaiCompatible.APIKey == "" {
+					ai.OpenAICompatible = nil
+				}
+			}
+			if ai.OpenAICompatible == nil {
+				ai.Provider = ""
+			}
+		default:
+			logErr("Unknown AI model provider: %s", ai.Provider)
+			ai.Provider = ""
 		}
 	}
 
 	return errors
 }
 
-func (r *CorootReconciler) corootService(cr *corootv1.Coroot) *corev1.Service {
-	ls := Labels(cr, "coroot")
+func (r *TelemetryReconciler) telemetryService(cr *telemetryv1.Telemetry) *corev1.Service {
+	ls := Labels(cr, "telemetry")
 
 	s := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        fmt.Sprintf("%s-coroot", cr.Name),
+			Name:        fmt.Sprintf("%s-telemetry", cr.Name),
 			Namespace:   cr.Namespace,
 			Labels:      ls,
 			Annotations: cr.Spec.Service.Annotations,
@@ -374,8 +352,8 @@ func (r *CorootReconciler) corootService(cr *corootv1.Coroot) *corev1.Service {
 	return s
 }
 
-func (r *CorootReconciler) corootPVCs(cr *corootv1.Coroot) []*corev1.PersistentVolumeClaim {
-	ls := Labels(cr, "coroot")
+func (r *TelemetryReconciler) telemetryPVCs(cr *telemetryv1.Telemetry) []*corev1.PersistentVolumeClaim {
+	ls := Labels(cr, "telemetry")
 
 	size := cr.Spec.Storage.Size
 	if size.IsZero() {
@@ -390,7 +368,7 @@ func (r *CorootReconciler) corootPVCs(cr *corootv1.Coroot) []*corev1.PersistentV
 	for replica := 0; replica < replicas; replica++ {
 		pvc := &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        fmt.Sprintf("data-%s-coroot-%d", cr.Name, replica),
+				Name:        fmt.Sprintf("data-%s-telemetry-%d", cr.Name, replica),
 				Namespace:   cr.Namespace,
 				Labels:      ls,
 				Annotations: cr.Spec.Storage.Annotations,
@@ -410,7 +388,7 @@ func (r *CorootReconciler) corootPVCs(cr *corootv1.Coroot) []*corev1.PersistentV
 	return res
 }
 
-func (r *CorootReconciler) corootIngressV1(cr *corootv1.Coroot) *networkingv1.Ingress {
+func (r *TelemetryReconciler) telemetryIngressV1(cr *telemetryv1.Telemetry) *networkingv1.Ingress {
 	ls := Labels(cr, "ingress")
 	i := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -442,7 +420,7 @@ func (r *CorootReconciler) corootIngressV1(cr *corootv1.Coroot) *networkingv1.In
 						PathType: ptr.To(networkingv1.PathTypePrefix),
 						Backend: networkingv1.IngressBackend{
 							Service: &networkingv1.IngressServiceBackend{
-								Name: fmt.Sprintf("%s-coroot", cr.Name),
+								Name: fmt.Sprintf("%s-telemetry", cr.Name),
 								Port: networkingv1.ServiceBackendPort{
 									Name: portName,
 								},
@@ -459,7 +437,7 @@ func (r *CorootReconciler) corootIngressV1(cr *corootv1.Coroot) *networkingv1.In
 	return i
 }
 
-func (r *CorootReconciler) corootIngressV1Beta1(cr *corootv1.Coroot) *networkingv1beta1.Ingress {
+func (r *TelemetryReconciler) telemetryIngressV1Beta1(cr *telemetryv1.Telemetry) *networkingv1beta1.Ingress {
 	ls := Labels(cr, "ingress")
 	i := &networkingv1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -497,7 +475,7 @@ func (r *CorootReconciler) corootIngressV1Beta1(cr *corootv1.Coroot) *networking
 						Path:     path,
 						PathType: &pathType,
 						Backend: networkingv1beta1.IngressBackend{
-							ServiceName: fmt.Sprintf("%s-coroot", cr.Name),
+							ServiceName: fmt.Sprintf("%s-telemetry", cr.Name),
 							ServicePort: intstr.FromString(portName),
 						},
 					}},
@@ -514,11 +492,11 @@ func (r *CorootReconciler) corootIngressV1Beta1(cr *corootv1.Coroot) *networking
 	return i
 }
 
-func (r *CorootReconciler) corootDeployment(cr *corootv1.Coroot) *appsv1.Deployment {
-	ls := Labels(cr, "coroot")
+func (r *TelemetryReconciler) telemetryDeployment(cr *telemetryv1.Telemetry) *appsv1.Deployment {
+	ls := Labels(cr, "telemetry")
 	d := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-coroot",
+			Name:      cr.Name + "-telemetry",
 			Namespace: cr.Namespace,
 			Labels:    ls,
 		},
@@ -526,17 +504,17 @@ func (r *CorootReconciler) corootDeployment(cr *corootv1.Coroot) *appsv1.Deploym
 	return d
 }
 
-func (r *CorootReconciler) corootStatefulSet(cr *corootv1.Coroot, configEnvs ConfigEnvs, configHash string) *appsv1.StatefulSet {
-	ls := Labels(cr, "coroot")
+func (r *TelemetryReconciler) telemetryStatefulSet(cr *telemetryv1.Telemetry, configEnvs ConfigEnvs, configHash string) *appsv1.StatefulSet {
+	ls := Labels(cr, "telemetry")
 	ss := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-coroot",
+			Name:      cr.Name + "-telemetry",
 			Namespace: cr.Namespace,
 			Labels:    ls,
 		},
 	}
 
-	refreshInterval := cmp.Or(cr.Spec.MetricsRefreshInterval, corootv1.DefaultMetricRefreshInterval)
+	refreshInterval := cmp.Or(cr.Spec.MetricsRefreshInterval, telemetryv1.DefaultMetricRefreshInterval)
 
 	var ports []corev1.ContainerPort
 	if !cr.Spec.HTTPDisabled {
@@ -548,7 +526,7 @@ func (r *CorootReconciler) corootStatefulSet(cr *corootv1.Coroot, configEnvs Con
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: cr.Name + "-coroot",
+						Name: cr.Name + "-telemetry",
 					},
 				},
 			},
@@ -628,11 +606,7 @@ func (r *CorootReconciler) corootStatefulSet(cr *corootv1.Coroot, configEnvs Con
 		env = append(env, envVarFromSecret("AUTH_BOOTSTRAP_ADMIN_PASSWORD", cr.Spec.AuthBootstrapAdminPasswordSecret, cr.Spec.AuthBootstrapAdminPassword))
 	}
 
-	image := r.getAppImage(cr, AppCorootCE)
-	if ee := cr.Spec.EnterpriseEdition; ee != nil {
-		image = r.getAppImage(cr, AppCorootEE)
-		env = append(env, envVarFromSecret("LICENSE_KEY", ee.LicenseKeySecret, ee.LicenseKey))
-	}
+	image := r.getAppImage(cr, AppTelemetry)
 
 	if ep := cr.Spec.ExternalPrometheus; ep != nil {
 		env = append(env,
@@ -736,7 +710,7 @@ func (r *CorootReconciler) corootStatefulSet(cr *corootv1.Coroot, configEnvs Con
 				Name:      "data",
 				Namespace: cr.Namespace,
 			},
-			Spec: r.corootPVCs(cr)[0].Spec,
+			Spec: r.telemetryPVCs(cr)[0].Spec,
 		}},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
@@ -744,7 +718,7 @@ func (r *CorootReconciler) corootStatefulSet(cr *corootv1.Coroot, configEnvs Con
 				Annotations: podAnnotations,
 			},
 			Spec: corev1.PodSpec{
-				ServiceAccountName: cr.Name + "-coroot",
+				ServiceAccountName: cr.Name + "-telemetry",
 				SecurityContext:    nonRootSecurityContext,
 				NodeSelector:       cr.Spec.NodeSelector,
 				Affinity:           cr.Spec.Affinity,
@@ -754,7 +728,7 @@ func (r *CorootReconciler) corootStatefulSet(cr *corootv1.Coroot, configEnvs Con
 					{
 						Image:           image.Name,
 						ImagePullPolicy: image.PullPolicy,
-						Name:            "coroot",
+						Name:            "telemetry",
 						Args: []string{
 							"--config=/config/config.yaml",
 							"--data-dir=/data",
@@ -774,11 +748,11 @@ func (r *CorootReconciler) corootStatefulSet(cr *corootv1.Coroot, configEnvs Con
 	return ss
 }
 
-func (r *CorootReconciler) corootConfigMap(ctx context.Context, cr *corootv1.Coroot) (*corev1.ConfigMap, string) {
-	ls := Labels(cr, "coroot")
+func (r *TelemetryReconciler) telemetryConfigMap(ctx context.Context, cr *telemetryv1.Telemetry) (*corev1.ConfigMap, string) {
+	ls := Labels(cr, "telemetry")
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-coroot",
+			Name:      cr.Name + "-telemetry",
 			Namespace: cr.Namespace,
 			Labels:    ls,
 		},
@@ -795,10 +769,9 @@ func (r *CorootReconciler) corootConfigMap(ctx context.Context, cr *corootv1.Cor
 		HTTPSListenAddress   string                    `json:"https_listen_address,omitempty"`
 		HTTPDisabled         bool                      `json:"http_disabled,omitempty"`
 		DisableBuiltinAlerts bool                      `json:"disableBuiltinAlerts,omitempty"`
-		Projects             []corootv1.ProjectSpec    `json:"projects,omitempty"`
-		SSO                  *corootv1.SSOSpec         `json:"sso,omitempty"`
-		AI                   *corootv1.AISpec          `json:"ai,omitempty"`
-		CorootCloud          *corootv1.CorootCloudSpec `json:"corootCloud,omitempty"`
+		Projects             []telemetryv1.ProjectSpec `json:"projects,omitempty"`
+		SSO                  *telemetryv1.SSOSpec      `json:"sso,omitempty"`
+		AI                   *telemetryv1.AISpec       `json:"ai,omitempty"`
 		TLS                  *TLS                      `json:"tls,omitempty"`
 	}
 
@@ -807,7 +780,6 @@ func (r *CorootReconciler) corootConfigMap(ctx context.Context, cr *corootv1.Cor
 		Projects:             cr.Spec.Projects,
 		SSO:                  cr.Spec.SSO,
 		AI:                   cr.Spec.AI,
-		CorootCloud:          cr.Spec.CorootCloud,
 	}
 	if cr.Spec.HTTPDisabled {
 		cfg.HTTPDisabled = true
@@ -826,7 +798,7 @@ func (r *CorootReconciler) corootConfigMap(ctx context.Context, cr *corootv1.Cor
 
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
-		log.FromContext(ctx).Error(err, "Failed to marshal coroot config")
+		log.FromContext(ctx).Error(err, "Failed to marshal telemetry config")
 	}
 	cm.BinaryData["config.yaml"] = data
 	hash := sha256.New()

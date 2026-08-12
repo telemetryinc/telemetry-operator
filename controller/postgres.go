@@ -5,10 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	corootv1 "github.io/coroot/operator/api/v1"
+	telemetryv1 "github.com/telemetryinc/telemetry-operator/api/v1"
 )
 
-func postgresConnectionString(p corootv1.PostgresSpec, passwordEnvVar string) string {
+func postgresConnectionString(p telemetryv1.PostgresSpec, passwordEnvVar string) string {
 	kv := p.Params
 	if kv == nil {
 		kv = map[string]string{}

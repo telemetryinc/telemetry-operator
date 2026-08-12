@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	AnnotationLastAppliedConfiguration = "operator.coroot.com/last-applied-configuration"
+	AnnotationLastAppliedConfiguration = "operator.deploy.tel/last-applied-configuration"
 	RandomStringCharset                = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
@@ -118,7 +118,7 @@ type ConfigEnvs map[string]*corev1.SecretKeySelector
 
 func (ce ConfigEnvs) Add(selector *corev1.SecretKeySelector) string {
 	hash := crc32.ChecksumIEEE([]byte(selector.Name + "/" + selector.Key))
-	name := fmt.Sprintf("COROOT_CONFIG_SECRET_%X", hash)
+	name := fmt.Sprintf("TELEMETRY_CONFIG_SECRET_%X", hash)
 	ce[name] = selector
 	return fmt.Sprintf(`${%s}`, name)
 }

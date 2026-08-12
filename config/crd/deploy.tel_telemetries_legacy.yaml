@@ -4,14 +4,14 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: Replace=true
     controller-gen.kubebuilder.io/version: v0.20.1
-  name: coroots.coroot.com
+  name: telemetries.deploy.tel
 spec:
-  group: coroot.com
+  group: deploy.tel
   names:
-    kind: Coroot
-    listKind: CorootList
-    plural: coroots
-    singular: coroot
+    kind: Telemetry
+    listKind: TelemetryList
+    plural: telemetries
+    singular: telemetry
   scope: Namespaced
   versions:
     - name: v1
@@ -869,19 +869,19 @@ spec:
                 agentsOnly:
                   description: Configures the operator to install only the node-agent and cluster-agent.
                   properties:
-                    corootURL:
-                      description: URL of the Coroot instance to which agents send metrics, logs, traces, and profiles.
+                    telemetryURL:
+                      description: URL of the Telemetry instance to which agents send metrics, logs, traces, and profiles.
                       pattern: ^https?://.+$
                       type: string
                     tlsSkipVerify:
-                      description: Whether to skip verification of the Coroot server's TLS certificate.
+                      description: Whether to skip verification of the Telemetry server's TLS certificate.
                       type: boolean
                   required:
-                    - corootURL
+                    - telemetryURL
                   type: object
                   nullable: true
                 ai:
-                  description: AI configuration (Coroot Enterprise Edition only).
+                  description: AI configuration.
                   properties:
                     anthropic:
                       description: Anthropic configuration.
@@ -989,7 +989,7 @@ spec:
                   type: object
                   nullable: true
                 apiKey:
-                  description: The API key used by agents when sending telemetry to Coroot.
+                  description: The API key used by agents when sending telemetry to Telemetry.
                   type: string
                   nullable: true
                 apiKeySecret:
@@ -1015,7 +1015,7 @@ spec:
                   type: object
                   nullable: true
                 authAnonymousRole:
-                  description: Allows access to Coroot without authentication if set (one of Admin, Editor, or Viewer).
+                  description: Allows access to Telemetry without authentication if set (one of Admin, Editor, or Viewer).
                   type: string
                   nullable: true
                 authBootstrapAdminPassword:
@@ -1883,7 +1883,7 @@ spec:
                     image:
                       description: |-
                         ImageSpec defines the configuration for specifying an image repository, tag, pull policy, and pull secrets.
-                        If unspecified, the operator will automatically update its components to the latest versions from Coroot's public registry.
+                        If unspecified, the operator will automatically update its components to the latest versions from Telemetry's public registry.
                       properties:
                         name:
                           description: |-
@@ -2745,7 +2745,7 @@ spec:
                         image:
                           description: |-
                             ImageSpec defines the configuration for specifying an image repository, tag, pull policy, and pull secrets.
-                            If unspecified, the operator will automatically update its components to the latest versions from Coroot's public registry.
+                            If unspecified, the operator will automatically update its components to the latest versions from Telemetry's public registry.
                           properties:
                             name:
                               description: |-
@@ -4078,7 +4078,7 @@ spec:
                     image:
                       description: |-
                         ImageSpec defines the configuration for specifying an image repository, tag, pull policy, and pull secrets.
-                        If unspecified, the operator will automatically update its components to the latest versions from Coroot's public registry.
+                        If unspecified, the operator will automatically update its components to the latest versions from Telemetry's public registry.
                       properties:
                         name:
                           description: |-
@@ -4112,7 +4112,7 @@ spec:
                         image:
                           description: |-
                             ImageSpec defines the configuration for specifying an image repository, tag, pull policy, and pull secrets.
-                            If unspecified, the operator will automatically update its components to the latest versions from Coroot's public registry.
+                            If unspecified, the operator will automatically update its components to the latest versions from Telemetry's public registry.
                           properties:
                             name:
                               description: |-
@@ -4209,10 +4209,10 @@ spec:
                           type: object
                       type: object
                     tls:
-                      description: TLS settings for connecting to Coroot.
+                      description: TLS settings for connecting to Telemetry.
                       properties:
                         caSecret:
-                          description: Secret containing the CA certificate to verify the Coroot server's certificate.
+                          description: Secret containing the CA certificate to verify the Telemetry server's certificate.
                           properties:
                             key:
                               description: The key of the secret to select from.  Must be a valid secret key.
@@ -4233,7 +4233,7 @@ spec:
                             - key
                           type: object
                         tlsSkipVerify:
-                          description: Whether to skip verification of the Coroot server's TLS certificate.
+                          description: Whether to skip verification of the Telemetry server's TLS certificate.
                           type: boolean
                       type: object
                     tolerations:
@@ -4276,148 +4276,12 @@ spec:
                       type: array
                   type: object
                   nullable: true
-                communityEdition:
-                  description: Configurations for Coroot Community Edition.
-                  properties:
-                    image:
-                      description: |-
-                        ImageSpec defines the configuration for specifying an image repository, tag, pull policy, and pull secrets.
-                        If unspecified, the operator will automatically update its components to the latest versions from Coroot's public registry.
-                      properties:
-                        name:
-                          description: |-
-                            Name specifies the full image reference, including registry, component, and tag.
-                            E.g.: <private-registry>/<component-name>:<component-version>
-                          type: string
-                        pullPolicy:
-                          description: PullPolicy defines the image pull policy (e.g., Always, IfNotPresent, Never).
-                          type: string
-                        pullSecrets:
-                          description: PullSecrets contains a list of references to Kubernetes secrets used for pulling the image from a private registry.
-                          items:
-                            description: |-
-                              LocalObjectReference contains enough information to let you locate the
-                              referenced object inside the same namespace.
-                            properties:
-                              name:
-                                default: ""
-                                description: |-
-                                  Name of the referent.
-                                  This field is effectively required, but due to backwards compatibility is
-                                  allowed to be empty. Instances of this type with an empty value here are
-                                  almost certainly wrong.
-                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                type: string
-                            type: object
-                          type: array
-                      type: object
-                  type: object
-                  nullable: true
-                corootCloud:
-                  description: Coroot Cloud integration.
-                  properties:
-                    apiKey:
-                      description: Coroot Cloud API key. Can be obtained from the UI after connecting to Coroot Cloud.
-                      type: string
-                    apiKeySecret:
-                      description: Secret containing the API key.
-                      properties:
-                        key:
-                          description: The key of the secret to select from.  Must be a valid secret key.
-                          type: string
-                        name:
-                          default: ""
-                          description: |-
-                            Name of the referent.
-                            This field is effectively required, but due to backwards compatibility is
-                            allowed to be empty. Instances of this type with an empty value here are
-                            almost certainly wrong.
-                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          type: string
-                        optional:
-                          description: Specify whether the Secret or its key must be defined
-                          type: boolean
-                      required:
-                        - key
-                      type: object
-                    rca:
-                      description: Root Cause Analysis (RCA) configuration.
-                      properties:
-                        disableIncidentsAutoInvestigation:
-                          description: If true, incidents will not be investigated automatically.
-                          type: boolean
-                      type: object
-                  type: object
-                  nullable: true
                 disableBuiltinAlerts:
                   description: Disable all built-in alerting rules on startup.
                   type: boolean
                   nullable: true
-                enterpriseEdition:
-                  description: Configurations for Coroot Enterprise Edition.
-                  properties:
-                    image:
-                      description: |-
-                        ImageSpec defines the configuration for specifying an image repository, tag, pull policy, and pull secrets.
-                        If unspecified, the operator will automatically update its components to the latest versions from Coroot's public registry.
-                      properties:
-                        name:
-                          description: |-
-                            Name specifies the full image reference, including registry, component, and tag.
-                            E.g.: <private-registry>/<component-name>:<component-version>
-                          type: string
-                        pullPolicy:
-                          description: PullPolicy defines the image pull policy (e.g., Always, IfNotPresent, Never).
-                          type: string
-                        pullSecrets:
-                          description: PullSecrets contains a list of references to Kubernetes secrets used for pulling the image from a private registry.
-                          items:
-                            description: |-
-                              LocalObjectReference contains enough information to let you locate the
-                              referenced object inside the same namespace.
-                            properties:
-                              name:
-                                default: ""
-                                description: |-
-                                  Name of the referent.
-                                  This field is effectively required, but due to backwards compatibility is
-                                  allowed to be empty. Instances of this type with an empty value here are
-                                  almost certainly wrong.
-                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                type: string
-                            type: object
-                          type: array
-                      type: object
-                    licenseKey:
-                      description: |-
-                        License key for Coroot Enterprise Edition.
-                        You can get the Coroot Enterprise license and start a free trial anytime through the Coroot Customer Portal: https://coroot.com/account.
-                      type: string
-                    licenseKeySecret:
-                      description: Secret containing the license key.
-                      properties:
-                        key:
-                          description: The key of the secret to select from.  Must be a valid secret key.
-                          type: string
-                        name:
-                          default: ""
-                          description: |-
-                            Name of the referent.
-                            This field is effectively required, but due to backwards compatibility is
-                            allowed to be empty. Instances of this type with an empty value here are
-                            almost certainly wrong.
-                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          type: string
-                        optional:
-                          description: Specify whether the Secret or its key must be defined
-                          type: boolean
-                      required:
-                        - key
-                      type: object
-                  type: object
-                  nullable: true
                 env:
-                  description: Environment variables for Coroot.
+                  description: Environment variables for Telemetry.
                   items:
                     description: EnvVar represents an environment variable present in a Container.
                     properties:
@@ -4632,8 +4496,39 @@ spec:
                   description: 'HTTPS listen address (default: :8443).'
                   type: string
                   nullable: true
+                image:
+                  description: Image overrides the Telemetry server image.
+                  properties:
+                    name:
+                      description: |-
+                        Name specifies the full image reference, including registry, component, and tag.
+                        E.g.: <private-registry>/<component-name>:<component-version>
+                      type: string
+                    pullPolicy:
+                      description: PullPolicy defines the image pull policy (e.g., Always, IfNotPresent, Never).
+                      type: string
+                    pullSecrets:
+                      description: PullSecrets contains a list of references to Kubernetes secrets used for pulling the image from a private registry.
+                      items:
+                        description: |-
+                          LocalObjectReference contains enough information to let you locate the
+                          referenced object inside the same namespace.
+                        properties:
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                        type: object
+                      type: array
+                  type: object
+                  nullable: true
                 ingress:
-                  description: Ingress configuration for Coroot.
+                  description: Ingress configuration for Telemetry.
                   properties:
                     annotations:
                       additionalProperties:
@@ -4644,10 +4539,10 @@ spec:
                       description: Ingress class name (e.g., nginx, traefik; if not set the default IngressClass will be used).
                       type: string
                     host:
-                      description: Domain name for Coroot (e.g., coroot.company.com).
+                      description: Domain name for Telemetry (e.g., telemetry.company.com).
                       type: string
                     path:
-                      description: Path prefix for Coroot (e.g., /coroot).
+                      description: Path prefix for Telemetry (e.g., /telemetry).
                       type: string
                     tls:
                       description: IngressTLS describes the transport layer security associated with an ingress.
@@ -5636,7 +5531,7 @@ spec:
                     image:
                       description: |-
                         ImageSpec defines the configuration for specifying an image repository, tag, pull policy, and pull secrets.
-                        If unspecified, the operator will automatically update its components to the latest versions from Coroot's public registry.
+                        If unspecified, the operator will automatically update its components to the latest versions from Telemetry's public registry.
                       properties:
                         name:
                           description: |-
@@ -5744,10 +5639,10 @@ spec:
                           type: object
                       type: object
                     tls:
-                      description: TLS settings for connecting to Coroot.
+                      description: TLS settings for connecting to Telemetry.
                       properties:
                         caSecret:
-                          description: Secret containing the CA certificate to verify the Coroot server's certificate.
+                          description: Secret containing the CA certificate to verify the Telemetry server's certificate.
                           properties:
                             key:
                               description: The key of the secret to select from.  Must be a valid secret key.
@@ -5768,7 +5663,7 @@ spec:
                             - key
                           type: object
                         tlsSkipVerify:
-                          description: Whether to skip verification of the Coroot server's TLS certificate.
+                          description: Whether to skip verification of the Telemetry server's TLS certificate.
                           type: boolean
                       type: object
                     tolerations:
@@ -5880,7 +5775,7 @@ spec:
                 podAnnotations:
                   additionalProperties:
                     type: string
-                  description: Annotations for Coroot pods.
+                  description: Annotations for Telemetry pods.
                   type: object
                   nullable: true
                 postgres:
@@ -5936,7 +5831,7 @@ spec:
                   type: string
                   nullable: true
                 projects:
-                  description: Projects configuration (Coroot will create or update the specified projects).
+                  description: Projects configuration (Telemetry will create or update the specified projects).
                   items:
                     properties:
                       alertingRules:
@@ -6074,7 +5969,7 @@ spec:
                           type: object
                         type: array
                       apiKeys:
-                        description: Project API keys, used by agents to send telemetry data (required unless memberProjects or remoteCoroot is set).
+                        description: Project API keys, used by agents to send telemetry data (required unless memberProjects or remoteTelemetry is set).
                         items:
                           properties:
                             description:
@@ -6299,7 +6194,7 @@ spec:
                         description: Notification integrations.
                         properties:
                           baseURL:
-                            description: The URL of Coroot instance (required). Used for generating links in notifications.
+                            description: The URL of Telemetry instance (required). Used for generating links in notifications.
                             pattern: ^https?://.+$
                             type: string
                           opsgenie:
@@ -6533,8 +6428,8 @@ spec:
                         required:
                           - baseURL
                         type: object
-                      remoteCoroot:
-                        description: Use another Coroot instance as the data source for this project.
+                      remoteTelemetry:
+                        description: Use another Telemetry instance as the data source for this project.
                         properties:
                           apiKey:
                             description: API key of the remote project.
@@ -6565,10 +6460,10 @@ spec:
                             pattern: ^[0-9]+[smhdwy]$
                             type: string
                           tlsSkipVerify:
-                            description: Whether to skip verification of the Coroot server's TLS certificate.
+                            description: Whether to skip verification of the Telemetry server's TLS certificate.
                             type: boolean
                           url:
-                            description: Base URL of the remote Coroot instance.
+                            description: Base URL of the remote Telemetry instance.
                             pattern: ^https?://.+$
                             type: string
                         type: object
@@ -7411,7 +7306,7 @@ spec:
                     image:
                       description: |-
                         ImageSpec defines the configuration for specifying an image repository, tag, pull policy, and pull secrets.
-                        If unspecified, the operator will automatically update its components to the latest versions from Coroot's public registry.
+                        If unspecified, the operator will automatically update its components to the latest versions from Telemetry's public registry.
                       properties:
                         name:
                           description: |-
@@ -7576,7 +7471,7 @@ spec:
                   type: object
                   nullable: true
                 replicas:
-                  description: Number of Coroot StatefulSet pods.
+                  description: Number of Telemetry StatefulSet pods.
                   type: integer
                   nullable: true
                 resources:
@@ -7637,7 +7532,7 @@ spec:
                   type: object
                   nullable: true
                 service:
-                  description: Service configuration for Coroot.
+                  description: Service configuration for Telemetry.
                   properties:
                     annotations:
                       additionalProperties:
@@ -7674,7 +7569,7 @@ spec:
                   type: object
                   nullable: true
                 sso:
-                  description: Single Sign-On configuration (Coroot Enterprise Edition only).
+                  description: Single Sign-On configuration.
                   properties:
                     defaultRole:
                       description: Default role for authenticated users (Admin, Editor, Viewer, or a custom role).
@@ -7753,7 +7648,7 @@ spec:
                   type: object
                   nullable: true
                 storage:
-                  description: Storage configuration for Coroot.
+                  description: Storage configuration for Telemetry.
                   properties:
                     annotations:
                       additionalProperties:

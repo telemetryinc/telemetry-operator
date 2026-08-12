@@ -1,1 +1,1 @@
-Coroot Kubernetes/Openshift operator.
+Telemetry Kubernetes/Openshift operator.

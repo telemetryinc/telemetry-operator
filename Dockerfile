@@ -9,22 +9,22 @@ COPY main.go main.go
 COPY api/ api/
 COPY controller/ controller/
 
-RUN CGO_ENABLED=0 go build -a -o coroot-operator main.go
+RUN CGO_ENABLED=0 go build -a -o telemetry-operator main.go
 
 FROM registry.access.redhat.com/ubi9/ubi
 
 ARG VERSION=unknown
-LABEL name="coroot-operator" \
-      vendor="Coroot, Inc." \
-      maintainer="Coroot, Inc." \
+LABEL name="telemetry-operator" \
+      vendor="Telemetry Inc." \
+      maintainer="Telemetry Inc." \
       version=${VERSION} \
       release="1" \
-      summary="Coroot Operator." \
-      description="Coroot Operator container image."
+      summary="Telemetry Operator." \
+      description="Telemetry Operator container image."
 
 COPY LICENSE /licenses/LICENSE
 
 WORKDIR /
-COPY --from=builder /workspace/coroot-operator /usr/bin/coroot-operator
+COPY --from=builder /workspace/telemetry-operator /usr/bin/telemetry-operator
 USER 65534:65534
-ENTRYPOINT ["coroot-operator"]
+ENTRYPOINT ["telemetry-operator"]

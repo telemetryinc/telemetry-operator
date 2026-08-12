@@ -15,14 +15,14 @@ import (
 )
 
 const (
-	DefaultImageRegistry = "https://ghcr.io/coroot"
+	DefaultImageRegistry = "https://ghcr.io/telemetryinc"
 
 	dockerConfigPath = "/etc/registry/config.json"
 )
 
 type RegistryConfig struct {
 	// ImagePrefix is the scheme-stripped registry path used in image references,
-	// e.g. "ghcr.io/coroot" or "artifactory.example.com/docker-local/coroot".
+	// e.g. "ghcr.io/telemetryinc" or "artifactory.example.com/docker-local/telemetry".
 	ImagePrefix    string
 	PullSecretName string
 	TLSSkipVerify  bool

@@ -10,19 +10,19 @@ import (
 )
 
 func TestNewRegistryConfig(t *testing.T) {
-	cfg, err := NewRegistryConfig("https://ghcr.io/coroot", "", false)
+	cfg, err := NewRegistryConfig("https://ghcr.io/telemetryinc", "", false)
 	require.NoError(t, err)
-	assert.Equal(t, "ghcr.io/coroot", cfg.ImagePrefix)
+	assert.Equal(t, "ghcr.io/telemetryinc", cfg.ImagePrefix)
 	assert.Equal(t, "ghcr.io", cfg.host)
 
-	cfg, err = NewRegistryConfig("https://artifactory.example.com/docker-local/coroot", "", false)
+	cfg, err = NewRegistryConfig("https://artifactory.example.com/docker-local/telemetry", "", false)
 	require.NoError(t, err)
-	assert.Equal(t, "artifactory.example.com/docker-local/coroot", cfg.ImagePrefix)
+	assert.Equal(t, "artifactory.example.com/docker-local/telemetry", cfg.ImagePrefix)
 	assert.Equal(t, "artifactory.example.com", cfg.host)
 
-	cfg, err = NewRegistryConfig("https://registry.example.com:8443/coroot", "", false)
+	cfg, err = NewRegistryConfig("https://registry.example.com:8443/telemetry", "", false)
 	require.NoError(t, err)
-	assert.Equal(t, "registry.example.com:8443/coroot", cfg.ImagePrefix)
+	assert.Equal(t, "registry.example.com:8443/telemetry", cfg.ImagePrefix)
 	assert.Equal(t, "registry.example.com", cfg.host)
 
 	cfg, err = NewRegistryConfig("https://registry.example.com", "", false)
@@ -30,10 +30,10 @@ func TestNewRegistryConfig(t *testing.T) {
 	assert.Equal(t, "registry.example.com", cfg.ImagePrefix)
 	assert.Equal(t, "registry.example.com", cfg.host)
 
-	// empty URL defaults to ghcr.io/coroot
+	// empty URL defaults to ghcr.io/telemetryinc
 	cfg, err = NewRegistryConfig("", "", false)
 	require.NoError(t, err)
-	assert.Equal(t, "ghcr.io/coroot", cfg.ImagePrefix)
+	assert.Equal(t, "ghcr.io/telemetryinc", cfg.ImagePrefix)
 }
 
 func dockerConfigJSON(t *testing.T, auths map[string]dockerConfigAuth) []byte {

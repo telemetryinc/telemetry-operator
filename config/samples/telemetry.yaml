@@ -1,14 +1,11 @@
-apiVersion: coroot.com/v1
-kind: Coroot
+apiVersion: deploy.tel/v1
+kind: Telemetry
 metadata:
-  name: coroot
-  namespace: coroot
+  name: telemetry
+  namespace: telemetry
 spec:
-  communityEdition:
-#  enterpriseEdition:
-#    licenseKey:
 #  agentsOnly:
-#    corootUrl:
+#    telemetryURL:
 #  replicas: 1
   nodeAgent:
   clusterAgent:

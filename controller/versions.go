@@ -9,7 +9,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	corootv1 "github.io/coroot/operator/api/v1"
+	telemetryv1 "github.com/telemetryinc/telemetry-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -22,22 +22,19 @@ const (
 type App string
 
 const (
-	AppCorootCE         App = "coroot"
-	AppCorootEE         App = "coroot-ee"
-	AppNodeAgent        App = "coroot-node-agent"
-	AppClusterAgent     App = "coroot-cluster-agent"
+	AppTelemetry        App = "telemetry"
+	AppNodeAgent        App = "telemetry-node-agent"
+	AppClusterAgent     App = "telemetry-cluster-agent"
 	AppClickhouse       App = "clickhouse"
 	AppClickhouseKeeper App = "clickhouse-keeper"
 	AppPrometheus       App = "prometheus"
 )
 
-func (r *CorootReconciler) getAppImage(cr *corootv1.Coroot, app App) corootv1.ImageSpec {
-	var image corootv1.ImageSpec
+func (r *TelemetryReconciler) getAppImage(cr *telemetryv1.Telemetry, app App) telemetryv1.ImageSpec {
+	var image telemetryv1.ImageSpec
 	switch app {
-	case AppCorootCE:
-		image = cr.Spec.CommunityEdition.Image
-	case AppCorootEE:
-		image = cr.Spec.EnterpriseEdition.Image
+	case AppTelemetry:
+		image = cr.Spec.Image
 	case AppNodeAgent:
 		image = cr.Spec.NodeAgent.Image
 	case AppClusterAgent:
@@ -63,10 +60,10 @@ func (r *CorootReconciler) getAppImage(cr *corootv1.Coroot, app App) corootv1.Im
 	return image
 }
 
-func (r *CorootReconciler) fetchAppVersions() {
+func (r *TelemetryReconciler) fetchAppVersions() {
 	logger := log.FromContext(nil)
 	versions := map[App]string{}
-	for _, app := range []App{AppCorootCE, AppCorootEE, AppNodeAgent, AppClusterAgent} {
+	for _, app := range []App{AppTelemetry, AppNodeAgent, AppClusterAgent} {
 		v, err := r.fetchAppVersion(app)
 		if err != nil {
 			logger.Error(err, "failed to get version", "app", app)
@@ -87,7 +84,7 @@ func (r *CorootReconciler) fetchAppVersions() {
 	r.versions[AppPrometheus] = r.RegistryConfig.Image(PrometheusImage)
 }
 
-func (r *CorootReconciler) fetchAppVersion(app App) (string, error) {
+func (r *TelemetryReconciler) fetchAppVersion(app App) (string, error) {
 	repo, err := name.NewRepository(r.RegistryConfig.Image(string(app)))
 	if err != nil {
 		return "", err

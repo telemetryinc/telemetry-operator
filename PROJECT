@@ -2,18 +2,18 @@
 # This file is used to track the info used to scaffold your project
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
-domain: coroot.com
+domain: deploy.tel
 layout:
 - go.kubebuilder.io/v4
-projectName: coroot-operator
-repo: github.io/coroot/coroot-operator
+projectName: telemetry-operator
+repo: github.com/telemetryinc/telemetry-operator
 resources:
 - api:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: coroot.com
-  kind: Coroot
-  path: github.io/coroot/operator/api/v1
+  domain: deploy.tel
+  kind: Telemetry
+  path: github.com/telemetryinc/telemetry-operator/api/v1
   version: v1
 version: "3"

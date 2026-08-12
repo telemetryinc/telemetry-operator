@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"text/template"
 
-	corootv1 "github.io/coroot/operator/api/v1"
+	telemetryv1 "github.com/telemetryinc/telemetry-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func clickhousePasswordSecret(cr *corootv1.Coroot) *corev1.SecretKeySelector {
+func clickhousePasswordSecret(cr *telemetryv1.Telemetry) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: fmt.Sprintf("%s-clickhouse", cr.Name),
@@ -22,7 +22,7 @@ func clickhousePasswordSecret(cr *corootv1.Coroot) *corev1.SecretKeySelector {
 	}
 }
 
-func (r *CorootReconciler) clickhouseService(cr *corootv1.Coroot) *corev1.Service {
+func (r *TelemetryReconciler) clickhouseService(cr *telemetryv1.Telemetry) *corev1.Service {
 	ls := Labels(cr, "clickhouse")
 	s := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -54,7 +54,7 @@ func (r *CorootReconciler) clickhouseService(cr *corootv1.Coroot) *corev1.Servic
 	return s
 }
 
-func (r *CorootReconciler) clickhouseServiceHeadless(cr *corootv1.Coroot) *corev1.Service {
+func (r *TelemetryReconciler) clickhouseServiceHeadless(cr *telemetryv1.Telemetry) *corev1.Service {
 	ls := Labels(cr, "clickhouse")
 	s := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -88,7 +88,7 @@ func (r *CorootReconciler) clickhouseServiceHeadless(cr *corootv1.Coroot) *corev
 	return s
 }
 
-func (r *CorootReconciler) clickhousePVCs(cr *corootv1.Coroot) []*corev1.PersistentVolumeClaim {
+func (r *TelemetryReconciler) clickhousePVCs(cr *telemetryv1.Telemetry) []*corev1.PersistentVolumeClaim {
 	ls := Labels(cr, "clickhouse")
 	shards := cr.Spec.Clickhouse.Shards
 	if shards == 0 {
@@ -129,7 +129,7 @@ func (r *CorootReconciler) clickhousePVCs(cr *corootv1.Coroot) []*corev1.Persist
 	return res
 }
 
-func (r *CorootReconciler) clickhouseStatefulSets(cr *corootv1.Coroot) []*appsv1.StatefulSet {
+func (r *TelemetryReconciler) clickhouseStatefulSets(cr *telemetryv1.Telemetry) []*appsv1.StatefulSet {
 	ls := Labels(cr, "clickhouse")
 
 	shards := cr.Spec.Clickhouse.Shards
@@ -268,7 +268,7 @@ type s3ConfigParams struct {
 	MoveFactor string
 }
 
-func clickhouseConfigCmd(filename string, cr *corootv1.Coroot, shards, replicas, keepers int) string {
+func clickhouseConfigCmd(filename string, cr *telemetryv1.Telemetry, shards, replicas, keepers int) string {
 	params := struct {
 		Namespace string
 		Name      string

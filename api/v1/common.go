@@ -9,7 +9,7 @@ import (
 )
 
 // ImageSpec defines the configuration for specifying an image repository, tag, pull policy, and pull secrets.
-// If unspecified, the operator will automatically update its components to the latest versions from Coroot's public registry.
+// If unspecified, the operator will automatically update its components to the latest versions from Telemetry's public registry.
 type ImageSpec struct {
 	// Name specifies the full image reference, including registry, component, and tag.
 	// E.g.: <private-registry>/<component-name>:<component-version>

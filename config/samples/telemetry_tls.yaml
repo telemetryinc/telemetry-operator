@@ -1,40 +1,40 @@
-apiVersion: coroot.com/v1
-kind: Coroot
+apiVersion: deploy.tel/v1
+kind: Telemetry
 metadata:
-  name: coroot
-  namespace: coroot
+  name: telemetry
+  namespace: telemetry
 spec:
   tls:
     certSecret:
-      name: coroot-server-tls
+      name: telemetry-server-tls
       key: tls.crt
     keySecret:
-      name: coroot-server-tls
+      name: telemetry-server-tls
       key: tls.key
   
   httpDisabled: true
   
   apiKeySecret:
-    name: coroot-api-key
+    name: telemetry-api-key
     key: key
 
   projects:
     - name: "My Cluster"
       apiKeys:
         - keySecret:
-            name: coroot-api-key
+            name: telemetry-api-key
             key: key
 
   clusterAgent:
     tls:
       caSecret:
-        name: coroot-ca-cert
+        name: telemetry-ca-cert
         key: ca.crt
       tlsSkipVerify: false
 
   nodeAgent:
     tls:
       caSecret:
-        name: coroot-ca-cert
+        name: telemetry-ca-cert
         key: ca.crt
       tlsSkipVerify: false

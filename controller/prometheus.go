@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"text/template"
 
-	corootv1 "github.io/coroot/operator/api/v1"
+	telemetryv1 "github.com/telemetryinc/telemetry-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -18,7 +18,7 @@ const (
 	PrometheusDefaultOutOfOrderTimeWindow = "1h"
 )
 
-func (r *CorootReconciler) prometheusService(cr *corootv1.Coroot) *corev1.Service {
+func (r *TelemetryReconciler) prometheusService(cr *telemetryv1.Telemetry) *corev1.Service {
 	ls := Labels(cr, "prometheus")
 	s := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -44,7 +44,7 @@ func (r *CorootReconciler) prometheusService(cr *corootv1.Coroot) *corev1.Servic
 	return s
 }
 
-func (r *CorootReconciler) prometheusPVC(cr *corootv1.Coroot) *corev1.PersistentVolumeClaim {
+func (r *TelemetryReconciler) prometheusPVC(cr *telemetryv1.Telemetry) *corev1.PersistentVolumeClaim {
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "data-" + cr.Name + "-prometheus",
@@ -71,7 +71,7 @@ func (r *CorootReconciler) prometheusPVC(cr *corootv1.Coroot) *corev1.Persistent
 	return pvc
 }
 
-func (r *CorootReconciler) prometheusDeployment(cr *corootv1.Coroot) *appsv1.Deployment {
+func (r *TelemetryReconciler) prometheusDeployment(cr *telemetryv1.Telemetry) *appsv1.Deployment {
 	ls := Labels(cr, "prometheus")
 	d := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -172,7 +172,7 @@ func (r *CorootReconciler) prometheusDeployment(cr *corootv1.Coroot) *appsv1.Dep
 	return d
 }
 
-func prometheusConfigCmd(filename string, cr *corootv1.Coroot) string {
+func prometheusConfigCmd(filename string, cr *telemetryv1.Telemetry) string {
 	params := struct {
 		OutOfOrderTimeWindow string
 	}{

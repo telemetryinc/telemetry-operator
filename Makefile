@@ -1,5 +1,5 @@
 # Image URL to use all building/pushing image targets
-IMG ?= ghcr.io/coroot/coroot-operator:latest
+IMG ?= ghcr.io/telemetryinc/telemetry-operator:latest
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -29,9 +29,9 @@ help: ## Display this help.
 
 .PHONY: generate
 generate: controller-gen ## Generate WebhookConfiguration, ClusterRole, and CustomResourceDefinition manifests; DeepCopy method implementations.
-	$(CONTROLLER_GEN) rbac:roleName=coroot-operator crd webhook paths="./..."
+	$(CONTROLLER_GEN) rbac:roleName=telemetry-operator crd webhook paths="./..."
 	$(CONTROLLER_GEN) object paths="./..."
-	./hack/generate-legacy-crd.sh config/crd/coroot.com_coroots.yaml config/crd/coroot.com_coroots_legacy.yaml
+	./hack/generate-legacy-crd.sh config/crd/deploy.tel_telemetries.yaml config/crd/deploy.tel_telemetries_legacy.yaml
 
 
 .PHONY: fmt

@@ -2,7 +2,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: coroot-operator
+  name: telemetry-operator
 rules:
 - apiGroups:
   - ""
@@ -74,9 +74,9 @@ rules:
   - update
   - watch
 - apiGroups:
-  - coroot.com
+  - deploy.tel
   resources:
-  - coroots
+  - telemetries
   verbs:
   - create
   - delete
@@ -86,15 +86,15 @@ rules:
   - update
   - watch
 - apiGroups:
-  - coroot.com
+  - deploy.tel
   resources:
-  - coroots/finalizers
+  - telemetries/finalizers
   verbs:
   - update
 - apiGroups:
-  - coroot.com
+  - deploy.tel
   resources:
-  - coroots/status
+  - telemetries/status
   verbs:
   - get
   - patch

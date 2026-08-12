@@ -14,32 +14,19 @@ const (
 	DefaultMetricRefreshInterval = "15s"
 )
 
-type CommunityEditionSpec struct {
-	Image ImageSpec `json:"image,omitempty"`
-}
-
-type EnterpriseEditionSpec struct {
-	// License key for Coroot Enterprise Edition.
-	// You can get the Coroot Enterprise license and start a free trial anytime through the Coroot Customer Portal: https://coroot.com/account.
-	LicenseKey string `json:"licenseKey,omitempty"`
-	// Secret containing the license key.
-	LicenseKeySecret *corev1.SecretKeySelector `json:"licenseKeySecret,omitempty"`
-	Image            ImageSpec                 `json:"image,omitempty"`
-}
-
 type AgentsOnlySpec struct {
-	// URL of the Coroot instance to which agents send metrics, logs, traces, and profiles.
+	// URL of the Telemetry instance to which agents send metrics, logs, traces, and profiles.
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Pattern="^https?://.+$"
-	CorootURL string `json:"corootURL,omitempty"`
-	// Whether to skip verification of the Coroot server's TLS certificate.
+	TelemetryURL string `json:"telemetryURL,omitempty"`
+	// Whether to skip verification of the Telemetry server's TLS certificate.
 	TLSSkipVerify bool `json:"tlsSkipVerify,omitempty"`
 }
 
 type AgentTLSSpec struct {
-	// Secret containing the CA certificate to verify the Coroot server's certificate.
+	// Secret containing the CA certificate to verify the Telemetry server's certificate.
 	CASecret *corev1.SecretKeySelector `json:"caSecret,omitempty"`
-	// Whether to skip verification of the Coroot server's TLS certificate.
+	// Whether to skip verification of the Telemetry server's TLS certificate.
 	TLSSkipVerify bool `json:"tlsSkipVerify,omitempty"`
 }
 
@@ -57,7 +44,7 @@ type NodeAgentSpec struct {
 	// Environment variables for the node-agent.
 	Env   []corev1.EnvVar `json:"env,omitempty"`
 	Image ImageSpec       `json:"image,omitempty"`
-	// TLS settings for connecting to Coroot.
+	// TLS settings for connecting to Telemetry.
 	TLS *AgentTLSSpec `json:"tls,omitempty"`
 
 	LogCollector LogCollectorSpec `json:"logCollector,omitempty"`
@@ -99,7 +86,7 @@ type ClusterAgentSpec struct {
 	// Environment variables for the cluster-agent.
 	Env   []corev1.EnvVar `json:"env,omitempty"`
 	Image ImageSpec       `json:"image,omitempty"`
-	// TLS settings for connecting to Coroot.
+	// TLS settings for connecting to Telemetry.
 	TLS *AgentTLSSpec `json:"tls,omitempty"`
 
 	KubeStateMetrics KubeStateMetricsSpec `json:"kubeStateMetrics,omitempty"`
@@ -245,9 +232,9 @@ type PostgresSpec struct {
 type IngressSpec struct {
 	// Ingress class name (e.g., nginx, traefik; if not set the default IngressClass will be used).
 	ClassName *string `json:"className,omitempty"`
-	// Domain name for Coroot (e.g., coroot.company.com).
+	// Domain name for Telemetry (e.g., telemetry.company.com).
 	Host string `json:"host,omitempty"`
-	// Path prefix for Coroot (e.g., /coroot).
+	// Path prefix for Telemetry (e.g., /telemetry).
 	Path string                   `json:"path,omitempty"`
 	TLS  *networkingv1.IngressTLS `json:"tls,omitempty"`
 	// Annotations for Ingress.
@@ -287,7 +274,7 @@ type TLSSpec struct {
 	KeySecret *corev1.SecretKeySelector `json:"keySecret,omitempty"`
 }
 
-type CorootSpec struct {
+type TelemetrySpec struct {
 
 	// Specifies the metric resolution interval.
 	// +kubebuilder:validation:Pattern="^[0-9]+[sm]$"
@@ -304,7 +291,7 @@ type CorootSpec struct {
 	// Profiles retention time (e.g. 4h, 3d, 2w, 1y; default 7d).
 	// +kubebuilder:validation:Pattern="^[0-9]+[mhdwy]$"
 	ProfilesTTL string `json:"profilesTTL,omitempty"`
-	// Allows access to Coroot without authentication if set (one of Admin, Editor, or Viewer).
+	// Allows access to Telemetry without authentication if set (one of Admin, Editor, or Viewer).
 	AuthAnonymousRole string `json:"authAnonymousRole,omitempty"`
 	// Initial admin password for bootstrapping.
 	AuthBootstrapAdminPassword string `json:"authBootstrapAdminPassword,omitempty"`
@@ -320,33 +307,31 @@ type CorootSpec struct {
 	TLS *TLSSpec `json:"tls,omitempty"`
 	// Store metrics in ClickHouse. If enabled, Prometheus will not be installed.
 	StoreMetricsInClickhouse bool `json:"storeMetricsInClickhouse,omitempty"`
-	// Environment variables for Coroot.
+	// Environment variables for Telemetry.
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
-	// Configurations for Coroot Community Edition.
-	CommunityEdition CommunityEditionSpec `json:"communityEdition,omitempty"`
-	// Configurations for Coroot Enterprise Edition.
-	EnterpriseEdition *EnterpriseEditionSpec `json:"enterpriseEdition,omitempty"`
+	// Image overrides the Telemetry server image.
+	Image ImageSpec `json:"image,omitempty"`
 	// Configures the operator to install only the node-agent and cluster-agent.
 	AgentsOnly *AgentsOnlySpec `json:"agentsOnly,omitempty"`
 
-	// Number of Coroot StatefulSet pods.
+	// Number of Telemetry StatefulSet pods.
 	Replicas int `json:"replicas,omitempty"`
-	// Service configuration for Coroot.
+	// Service configuration for Telemetry.
 	Service ServiceSpec `json:"service,omitempty"`
-	// Ingress configuration for Coroot.
+	// Ingress configuration for Telemetry.
 	Ingress *IngressSpec `json:"ingress,omitempty"`
 	// NodeSelector restricts scheduling to nodes matching the specified labels.
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 	Affinity     *corev1.Affinity  `json:"affinity,omitempty"`
-	// Storage configuration for Coroot.
+	// Storage configuration for Telemetry.
 	Storage     StorageSpec                 `json:"storage,omitempty"`
 	Resources   corev1.ResourceRequirements `json:"resources,omitempty"`
 	Tolerations []corev1.Toleration         `json:"tolerations,omitempty"`
-	// Annotations for Coroot pods.
+	// Annotations for Telemetry pods.
 	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
 
-	// The API key used by agents when sending telemetry to Coroot.
+	// The API key used by agents when sending telemetry to Telemetry.
 	ApiKey string `json:"apiKey,omitempty"`
 	// Secret containing API key.
 	ApiKeySecret *corev1.SecretKeySelector `json:"apiKeySecret,omitempty"`
@@ -366,19 +351,17 @@ type CorootSpec struct {
 	// Store configuration in a Postgres DB instead of SQLite (required if replicas > 1).
 	Postgres *PostgresSpec `json:"postgres,omitempty"`
 
-	// Coroot Cloud integration.
-	CorootCloud *CorootCloudSpec `json:"corootCloud,omitempty"`
 	// Disable all built-in alerting rules on startup.
 	DisableBuiltinAlerts bool `json:"disableBuiltinAlerts,omitempty"`
-	// Projects configuration (Coroot will create or update the specified projects).
+	// Projects configuration (Telemetry will create or update the specified projects).
 	Projects []ProjectSpec `json:"projects,omitempty"`
-	// Single Sign-On configuration (Coroot Enterprise Edition only).
+	// Single Sign-On configuration.
 	SSO *SSOSpec `json:"sso,omitempty"`
-	// AI configuration (Coroot Enterprise Edition only).
+	// AI configuration.
 	AI *AISpec `json:"ai,omitempty"`
 }
 
-type CorootStatus struct {
+type TelemetryStatus struct {
 	Status string   `json:"status"`
 	Errors []string `json:"errors,omitempty"`
 }
@@ -387,22 +370,22 @@ type CorootStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:metadata:annotations=argocd.argoproj.io/sync-options=Replace=true
 
-type Coroot struct {
+type Telemetry struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   CorootSpec   `json:"spec,omitempty"`
-	Status CorootStatus `json:"status,omitempty"`
+	Spec   TelemetrySpec   `json:"spec,omitempty"`
+	Status TelemetryStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-type CorootList struct {
+type TelemetryList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Coroot `json:"items"`
+	Items           []Telemetry `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Coroot{}, &CorootList{})
+	SchemeBuilder.Register(&Telemetry{}, &TelemetryList{})
 }

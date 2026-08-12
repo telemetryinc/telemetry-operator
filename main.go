@@ -3,14 +3,14 @@ package main
 import (
 	"os"
 
-	"github.io/coroot/operator/controller"
+	"github.com/telemetryinc/telemetry-operator/controller"
 	"go.uber.org/zap/zapcore"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	corootv1 "github.io/coroot/operator/api/v1"
+	telemetryv1 "github.com/telemetryinc/telemetry-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -30,7 +30,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(corootv1.AddToScheme(scheme))
+	utilruntime.Must(telemetryv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -52,7 +52,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	reconciler := controller.NewCorootReconciler(mgr)
+	reconciler := controller.NewTelemetryReconciler(mgr)
 
 	if err = reconciler.SetupWithManager(mgr); err != nil {
 		logger.Error(err, "failed to create controller")

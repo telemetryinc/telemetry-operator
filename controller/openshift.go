@@ -1,7 +1,7 @@
 package controller
 
 import (
-	corootv1 "github.io/coroot/operator/api/v1"
+	telemetryv1 "github.com/telemetryinc/telemetry-operator/api/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -11,7 +11,7 @@ const (
 	sccPrivileged = "privileged"
 )
 
-func (r *CorootReconciler) openshiftSCCRole(cr *corootv1.Coroot, scc string) *rbacv1.Role {
+func (r *TelemetryReconciler) openshiftSCCRole(cr *telemetryv1.Telemetry, scc string) *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name + "-" + scc,
@@ -29,7 +29,7 @@ func (r *CorootReconciler) openshiftSCCRole(cr *corootv1.Coroot, scc string) *rb
 	}
 }
 
-func (r *CorootReconciler) openshiftSCCRoleBinding(cr *corootv1.Coroot, component, scc string) *rbacv1.RoleBinding {
+func (r *TelemetryReconciler) openshiftSCCRoleBinding(cr *telemetryv1.Telemetry, component, scc string) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name + "-" + component + "-" + scc,

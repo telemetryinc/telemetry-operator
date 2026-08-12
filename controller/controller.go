@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	corootv1 "github.io/coroot/operator/api/v1"
+	telemetryv1 "github.com/telemetryinc/telemetry-operator/api/v1"
 	"golang.org/x/exp/maps"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -33,7 +33,7 @@ const (
 	IngressAPIV1Beta1 = "networking.k8s.io/v1beta1"
 )
 
-type CorootReconciler struct {
+type TelemetryReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
@@ -52,7 +52,7 @@ type CorootReconciler struct {
 	RegistryConfig *RegistryConfig
 }
 
-func NewCorootReconciler(mgr ctrl.Manager) *CorootReconciler {
+func NewTelemetryReconciler(mgr ctrl.Manager) *TelemetryReconciler {
 	registryCfg, err := NewRegistryConfig(
 		os.Getenv("REGISTRY_URL"),
 		os.Getenv("REGISTRY_PULL_SECRET"),
@@ -68,7 +68,7 @@ func NewCorootReconciler(mgr ctrl.Manager) *CorootReconciler {
 		"tlsSkipVerify", registryCfg.TLSSkipVerify,
 	)
 
-	r := &CorootReconciler{
+	r := &TelemetryReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 
@@ -121,9 +121,9 @@ func detectIngressAPIVersion(mgr ctrl.Manager) string {
 	return IngressAPIV1Beta1
 }
 
-// +kubebuilder:rbac:groups=coroot.com,resources=coroots,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=coroot.com,resources=coroots/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=coroot.com,resources=coroots/finalizers,verbs=update
+// +kubebuilder:rbac:groups=deploy.tel,resources=telemetries,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=deploy.tel,resources=telemetries/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=deploy.tel,resources=telemetries/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=namespaces;nodes;pods;services;endpoints;persistentvolumes;persistentvolumeclaims;serviceaccounts;configmaps;secrets;events,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments;replicasets;daemonsets;statefulsets;cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs;jobs,verbs=get;list;watch;create;update;patch;delete
@@ -137,21 +137,21 @@ func detectIngressAPIVersion(mgr ctrl.Manager) string {
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;backups;scheduledbackups,verbs=get;list;watch
 // +kubebuilder:rbac:groups=pgv2.percona.com,resources=perconapgclusters;perconapgbackups,verbs=get;list;watch
 
-func (r *CorootReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *TelemetryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := ctrl.Log.WithValues("namespace", req.Namespace, "name", req.Name)
 	ctx = log.IntoContext(ctx, logger)
 
-	cr := &corootv1.Coroot{}
+	cr := &telemetryv1.Telemetry{}
 	err := r.Get(ctx, req.NamespacedName, cr)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			r.instancesLock.Lock()
 			if r.instances[req] {
-				logger.Info("Coroot has been deleted")
+				logger.Info("Telemetry has been deleted")
 				delete(r.instances, req)
 			}
 			if len(r.instances) == 0 {
-				cr = &corootv1.Coroot{}
+				cr = &telemetryv1.Telemetry{}
 				cr.Name = req.Name
 				cr.Namespace = req.Namespace
 				_ = r.Delete(ctx, r.clusterAgentClusterRoleBinding(cr))
@@ -174,7 +174,7 @@ func (r *CorootReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	r.CreateOrUpdateRole(ctx, cr, r.openshiftSCCRole(cr, sccPrivileged))
 
 	configEnvs := ConfigEnvs{}
-	validationErrors := r.validateCoroot(ctx, cr, configEnvs)
+	validationErrors := r.validateTelemetry(ctx, cr, configEnvs)
 
 	r.CreateOrUpdateServiceAccount(ctx, cr, "node-agent", sccPrivileged)
 	r.CreateOrUpdateDaemonSet(ctx, cr, r.nodeAgentDaemonSet(cr))
@@ -189,16 +189,16 @@ func (r *CorootReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, nil
 	}
 
-	r.CreateOrUpdateServiceAccount(ctx, cr, "coroot", sccNonroot)
-	for _, pvc := range r.corootPVCs(cr) {
+	r.CreateOrUpdateServiceAccount(ctx, cr, "telemetry", sccNonroot)
+	for _, pvc := range r.telemetryPVCs(cr) {
 		r.CreateOrUpdatePVC(ctx, cr, pvc, cr.Spec.Storage.ReclaimPolicy)
 	}
-	corootConfigMap, corootConfigHash := r.corootConfigMap(ctx, cr)
-	r.CreateOrUpdateConfigMap(ctx, cr, corootConfigMap)
-	r.CreateOrUpdateStatefulSet(ctx, cr, r.corootStatefulSet(cr, configEnvs, corootConfigHash))
-	r.CreateOrUpdateService(ctx, cr, r.corootService(cr))
+	telemetryConfigMap, telemetryConfigHash := r.telemetryConfigMap(ctx, cr)
+	r.CreateOrUpdateConfigMap(ctx, cr, telemetryConfigMap)
+	r.CreateOrUpdateStatefulSet(ctx, cr, r.telemetryStatefulSet(cr, configEnvs, telemetryConfigHash))
+	r.CreateOrUpdateService(ctx, cr, r.telemetryService(cr))
 	if !r.deploymentDeleted {
-		_ = r.Delete(ctx, r.corootDeployment(cr))
+		_ = r.Delete(ctx, r.telemetryDeployment(cr))
 		r.deploymentDeleted = true
 	}
 	r.CreateOrUpdateIngress(ctx, cr, cr.Spec.Ingress == nil)
@@ -245,7 +245,7 @@ func (r *CorootReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	return ctrl.Result{}, nil
 }
 
-func (r *CorootReconciler) CreateOrUpdate(ctx context.Context, cr *corootv1.Coroot, obj client.Object, delete, retain bool, mutateF controllerutil.MutateFn) {
+func (r *TelemetryReconciler) CreateOrUpdate(ctx context.Context, cr *telemetryv1.Telemetry, obj client.Object, delete, retain bool, mutateF controllerutil.MutateFn) {
 	logger := ctrl.Log.WithValues("namespace", obj.GetNamespace(), "name", obj.GetName(), "type", fmt.Sprintf("%T", obj))
 	if delete {
 		err := r.Delete(ctx, obj)
@@ -275,7 +275,7 @@ func (r *CorootReconciler) CreateOrUpdate(ctx context.Context, cr *corootv1.Coro
 	}
 }
 
-func (r *CorootReconciler) GetSecret(ctx context.Context, cr *corootv1.Coroot, selector *corev1.SecretKeySelector) (string, error) {
+func (r *TelemetryReconciler) GetSecret(ctx context.Context, cr *telemetryv1.Telemetry, selector *corev1.SecretKeySelector) (string, error) {
 	s := &corev1.Secret{}
 	s.Name = selector.Name
 	s.Namespace = cr.Namespace
@@ -290,7 +290,7 @@ func (r *CorootReconciler) GetSecret(ctx context.Context, cr *corootv1.Coroot, s
 	return string(data), nil
 }
 
-func (r *CorootReconciler) CreateOrUpdateSecret(ctx context.Context, cr *corootv1.Coroot, name string, keys []string, length int, retain bool) {
+func (r *TelemetryReconciler) CreateOrUpdateSecret(ctx context.Context, cr *telemetryv1.Telemetry, name string, keys []string, length int, retain bool) {
 	if len(keys) == 0 {
 		return
 	}
@@ -310,7 +310,7 @@ func (r *CorootReconciler) CreateOrUpdateSecret(ctx context.Context, cr *corootv
 	})
 }
 
-func (r *CorootReconciler) CreateOrUpdateConfigMap(ctx context.Context, cr *corootv1.Coroot, cm *corev1.ConfigMap) {
+func (r *TelemetryReconciler) CreateOrUpdateConfigMap(ctx context.Context, cr *telemetryv1.Telemetry, cm *corev1.ConfigMap) {
 	data := cm.BinaryData
 	r.CreateOrUpdate(ctx, cr, cm, false, false, func() error {
 		cm.BinaryData = data
@@ -318,21 +318,21 @@ func (r *CorootReconciler) CreateOrUpdateConfigMap(ctx context.Context, cr *coro
 	})
 }
 
-func (r *CorootReconciler) CreateOrUpdateDeployment(ctx context.Context, cr *corootv1.Coroot, d *appsv1.Deployment) {
+func (r *TelemetryReconciler) CreateOrUpdateDeployment(ctx context.Context, cr *telemetryv1.Telemetry, d *appsv1.Deployment) {
 	spec := d.Spec
 	r.CreateOrUpdate(ctx, cr, d, false, false, func() error {
 		return MergeSpecs(d, &d.Spec, spec, nil)
 	})
 }
 
-func (r *CorootReconciler) CreateOrUpdateDaemonSet(ctx context.Context, cr *corootv1.Coroot, ds *appsv1.DaemonSet) {
+func (r *TelemetryReconciler) CreateOrUpdateDaemonSet(ctx context.Context, cr *telemetryv1.Telemetry, ds *appsv1.DaemonSet) {
 	spec := ds.Spec
 	r.CreateOrUpdate(ctx, cr, ds, false, false, func() error {
 		return MergeSpecs(ds, &ds.Spec, spec, nil)
 	})
 }
 
-func (r *CorootReconciler) CreateOrUpdateStatefulSet(ctx context.Context, cr *corootv1.Coroot, ss *appsv1.StatefulSet) {
+func (r *TelemetryReconciler) CreateOrUpdateStatefulSet(ctx context.Context, cr *telemetryv1.Telemetry, ss *appsv1.StatefulSet) {
 	spec := ss.Spec
 	r.CreateOrUpdate(ctx, cr, ss, false, false, func() error {
 		volumeClaimTemplates := ss.Spec.VolumeClaimTemplates[:]
@@ -342,7 +342,7 @@ func (r *CorootReconciler) CreateOrUpdateStatefulSet(ctx context.Context, cr *co
 	})
 }
 
-func (r *CorootReconciler) CreateOrUpdatePVC(ctx context.Context, cr *corootv1.Coroot, pvc *corev1.PersistentVolumeClaim, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) {
+func (r *TelemetryReconciler) CreateOrUpdatePVC(ctx context.Context, cr *telemetryv1.Telemetry, pvc *corev1.PersistentVolumeClaim, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) {
 	spec := pvc.Spec
 	annotations := pvc.Annotations
 	retain := reclaimPolicy == corev1.PersistentVolumeReclaimRetain
@@ -356,7 +356,7 @@ func (r *CorootReconciler) CreateOrUpdatePVC(ctx context.Context, cr *corootv1.C
 	})
 }
 
-func (r *CorootReconciler) CreateOrUpdateService(ctx context.Context, cr *corootv1.Coroot, s *corev1.Service) {
+func (r *TelemetryReconciler) CreateOrUpdateService(ctx context.Context, cr *telemetryv1.Telemetry, s *corev1.Service) {
 	spec := s.Spec
 	annotations := s.Annotations
 	r.CreateOrUpdate(ctx, cr, s, false, false, func() error {
@@ -379,7 +379,7 @@ func (r *CorootReconciler) CreateOrUpdateService(ctx context.Context, cr *coroot
 	})
 }
 
-func (r *CorootReconciler) CreateOrUpdateServiceAccount(ctx context.Context, cr *corootv1.Coroot, component, scc string) {
+func (r *TelemetryReconciler) CreateOrUpdateServiceAccount(ctx context.Context, cr *telemetryv1.Telemetry, component, scc string) {
 	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
 		Name:      cr.Name + "-" + component,
 		Namespace: cr.Namespace,
@@ -389,7 +389,7 @@ func (r *CorootReconciler) CreateOrUpdateServiceAccount(ctx context.Context, cr 
 	r.CreateOrUpdate(ctx, cr, r.openshiftSCCRoleBinding(cr, component, scc), false, false, nil)
 }
 
-func (r *CorootReconciler) CreateOrUpdateRole(ctx context.Context, cr *corootv1.Coroot, role *rbacv1.Role) {
+func (r *TelemetryReconciler) CreateOrUpdateRole(ctx context.Context, cr *telemetryv1.Telemetry, role *rbacv1.Role) {
 	rules := role.Rules
 	r.CreateOrUpdate(ctx, cr, role, false, false, func() error {
 		role.Rules = rules
@@ -397,7 +397,7 @@ func (r *CorootReconciler) CreateOrUpdateRole(ctx context.Context, cr *corootv1.
 	})
 }
 
-func (r *CorootReconciler) CreateOrUpdateClusterRole(ctx context.Context, cr *corootv1.Coroot, role *rbacv1.ClusterRole) {
+func (r *TelemetryReconciler) CreateOrUpdateClusterRole(ctx context.Context, cr *telemetryv1.Telemetry, role *rbacv1.ClusterRole) {
 	rules := role.Rules
 	r.CreateOrUpdate(ctx, cr, role, false, true, func() error {
 		role.Rules = rules
@@ -405,11 +405,11 @@ func (r *CorootReconciler) CreateOrUpdateClusterRole(ctx context.Context, cr *co
 	})
 }
 
-func (r *CorootReconciler) CreateOrUpdateClusterRoleBinding(ctx context.Context, cr *corootv1.Coroot, b *rbacv1.ClusterRoleBinding) {
+func (r *TelemetryReconciler) CreateOrUpdateClusterRoleBinding(ctx context.Context, cr *telemetryv1.Telemetry, b *rbacv1.ClusterRoleBinding) {
 	r.CreateOrUpdate(ctx, cr, b, false, true, nil)
 }
 
-func (r *CorootReconciler) CreateOrUpdateIngressV1(ctx context.Context, cr *corootv1.Coroot, i *networkingv1.Ingress, delete bool) {
+func (r *TelemetryReconciler) CreateOrUpdateIngressV1(ctx context.Context, cr *telemetryv1.Telemetry, i *networkingv1.Ingress, delete bool) {
 	spec := i.Spec
 	annotations := i.Annotations
 	r.CreateOrUpdate(ctx, cr, i, delete, false, func() error {
@@ -417,7 +417,7 @@ func (r *CorootReconciler) CreateOrUpdateIngressV1(ctx context.Context, cr *coro
 	})
 }
 
-func (r *CorootReconciler) CreateOrUpdateIngressV1Beta1(ctx context.Context, cr *corootv1.Coroot, i *networkingv1beta1.Ingress, delete bool) {
+func (r *TelemetryReconciler) CreateOrUpdateIngressV1Beta1(ctx context.Context, cr *telemetryv1.Telemetry, i *networkingv1beta1.Ingress, delete bool) {
 	spec := i.Spec
 	annotations := i.Annotations
 	r.CreateOrUpdate(ctx, cr, i, delete, false, func() error {
@@ -425,17 +425,17 @@ func (r *CorootReconciler) CreateOrUpdateIngressV1Beta1(ctx context.Context, cr 
 	})
 }
 
-func (r *CorootReconciler) CreateOrUpdateIngress(ctx context.Context, cr *corootv1.Coroot, delete bool) {
+func (r *TelemetryReconciler) CreateOrUpdateIngress(ctx context.Context, cr *telemetryv1.Telemetry, delete bool) {
 	if r.IngressAPIVersion == IngressAPIV1 {
-		r.CreateOrUpdateIngressV1(ctx, cr, r.corootIngressV1(cr), delete)
+		r.CreateOrUpdateIngressV1(ctx, cr, r.telemetryIngressV1(cr), delete)
 	} else {
-		r.CreateOrUpdateIngressV1Beta1(ctx, cr, r.corootIngressV1Beta1(cr), delete)
+		r.CreateOrUpdateIngressV1Beta1(ctx, cr, r.telemetryIngressV1Beta1(cr), delete)
 	}
 }
 
-func (r *CorootReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *TelemetryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	builder := ctrl.NewControllerManagedBy(mgr).
-		For(&corootv1.Coroot{}).
+		For(&telemetryv1.Telemetry{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&appsv1.DaemonSet{}).
@@ -456,10 +456,10 @@ func (r *CorootReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return builder.Complete(r)
 }
 
-func Labels(cr *corootv1.Coroot, component string) map[string]string {
+func Labels(cr *telemetryv1.Telemetry, component string) map[string]string {
 	// https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 	return map[string]string{
-		"app.kubernetes.io/managed-by": "coroot-operator",
+		"app.kubernetes.io/managed-by": "telemetry-operator",
 		"app.kubernetes.io/part-of":    cr.Name,
 		"app.kubernetes.io/component":  component,
 	}

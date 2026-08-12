@@ -6,18 +6,18 @@ import (
 	"os"
 	"strings"
 
-	corootv1 "github.io/coroot/operator/api/v1"
+	telemetryv1 "github.com/telemetryinc/telemetry-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (r *CorootReconciler) clusterAgentClusterRoleBinding(cr *corootv1.Coroot) *rbacv1.ClusterRoleBinding {
+func (r *TelemetryReconciler) clusterAgentClusterRoleBinding(cr *telemetryv1.Telemetry) *rbacv1.ClusterRoleBinding {
 	b := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   cr.Name + "-cluster-agent",
-			Labels: Labels(cr, "coroot-cluster-agent"),
+			Labels: Labels(cr, "telemetry-cluster-agent"),
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -35,7 +35,7 @@ func (r *CorootReconciler) clusterAgentClusterRoleBinding(cr *corootv1.Coroot) *
 	return b
 }
 
-func (r *CorootReconciler) clusterAgentClusterRole(cr *corootv1.Coroot) *rbacv1.ClusterRole {
+func (r *TelemetryReconciler) clusterAgentClusterRole(cr *telemetryv1.Telemetry) *rbacv1.ClusterRole {
 	verbs := []string{"get", "list", "watch"}
 	coreResources := []string{"namespaces", "nodes", "pods", "services", "endpoints", "persistentvolumeclaims", "persistentvolumes", "events"}
 	if !strings.EqualFold(os.Getenv("DENY_GLOBAL_SECRETS"), "true") {
@@ -44,7 +44,7 @@ func (r *CorootReconciler) clusterAgentClusterRole(cr *corootv1.Coroot) *rbacv1.
 	role := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   cr.Name + "-cluster-agent",
-			Labels: Labels(cr, "coroot-cluster-agent"),
+			Labels: Labels(cr, "telemetry-cluster-agent"),
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -97,8 +97,8 @@ func (r *CorootReconciler) clusterAgentClusterRole(cr *corootv1.Coroot) *rbacv1.
 	return role
 }
 
-func (r *CorootReconciler) clusterAgentDeployment(cr *corootv1.Coroot) *appsv1.Deployment {
-	ls := Labels(cr, "coroot-cluster-agent")
+func (r *TelemetryReconciler) clusterAgentDeployment(cr *telemetryv1.Telemetry) *appsv1.Deployment {
+	ls := Labels(cr, "telemetry-cluster-agent")
 	d := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name + "-cluster-agent",
@@ -113,18 +113,18 @@ func (r *CorootReconciler) clusterAgentDeployment(cr *corootv1.Coroot) *appsv1.D
 		scheme = "https"
 		port = cr.Spec.Service.HTTPSPort
 	}
-	corootURL := fmt.Sprintf("%s://%s-coroot.%s:%d", scheme, cr.Name, cr.Namespace, port)
-	if cr.Spec.AgentsOnly != nil && cr.Spec.AgentsOnly.CorootURL != "" {
-		corootURL = cr.Spec.AgentsOnly.CorootURL
+	telemetryURL := fmt.Sprintf("%s://%s-telemetry.%s:%d", scheme, cr.Name, cr.Namespace, port)
+	if cr.Spec.AgentsOnly != nil && cr.Spec.AgentsOnly.TelemetryURL != "" {
+		telemetryURL = cr.Spec.AgentsOnly.TelemetryURL
 	}
 	tlsSkipVerify := (cr.Spec.AgentsOnly != nil && cr.Spec.AgentsOnly.TLSSkipVerify) || (cr.Spec.ClusterAgent.TLS != nil && cr.Spec.ClusterAgent.TLS.TLSSkipVerify)
 	var caSecret *corev1.SecretKeySelector
 	if cr.Spec.ClusterAgent.TLS != nil {
 		caSecret = cr.Spec.ClusterAgent.TLS.CASecret
 	}
-	scrapeInterval := cmp.Or(cr.Spec.MetricsRefreshInterval, corootv1.DefaultMetricRefreshInterval)
+	scrapeInterval := cmp.Or(cr.Spec.MetricsRefreshInterval, telemetryv1.DefaultMetricRefreshInterval)
 	env := []corev1.EnvVar{
-		{Name: "COROOT_URL", Value: corootURL},
+		{Name: "TELEMETRY_URL", Value: telemetryURL},
 		{Name: "METRICS_SCRAPE_INTERVAL", Value: scrapeInterval},
 		{Name: "KUBE_STATE_METRICS_ADDRESS", Value: "127.0.0.1:10302"},
 	}
@@ -135,7 +135,7 @@ func (r *CorootReconciler) clusterAgentDeployment(cr *corootv1.Coroot) *appsv1.D
 		env = append(env, corev1.EnvVar{Name: "INSECURE_SKIP_VERIFY", Value: "true"})
 	}
 	if caSecret != nil {
-		env = append(env, corev1.EnvVar{Name: "CA_FILE", Value: "/etc/coroot-ca/ca.crt"})
+		env = append(env, corev1.EnvVar{Name: "CA_FILE", Value: "/etc/telemetry-ca/ca.crt"})
 	}
 	for _, e := range cr.Spec.ClusterAgent.Env {
 		env = append(env, e)
@@ -153,7 +153,7 @@ func (r *CorootReconciler) clusterAgentDeployment(cr *corootv1.Coroot) *appsv1.D
 		},
 	}
 	if caSecret != nil {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: "ca", MountPath: "/etc/coroot-ca", ReadOnly: true})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: "ca", MountPath: "/etc/telemetry-ca", ReadOnly: true})
 		volumes = append(volumes, corev1.Volume{
 			Name: "ca",
 			VolumeSource: corev1.VolumeSource{

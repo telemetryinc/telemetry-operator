@@ -5,20 +5,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type CorootCloudSpec struct {
-	// Coroot Cloud API key. Can be obtained from the UI after connecting to Coroot Cloud.
-	APIKey string `json:"apiKey,omitempty"`
-	// Secret containing the API key.
-	APIKeySecret *corev1.SecretKeySelector `json:"apiKeySecret,omitempty"`
-	// Root Cause Analysis (RCA) configuration.
-	RCA *CorootCloudRCASpec `json:"rca,omitempty"`
-}
-
-type CorootCloudRCASpec struct {
-	// If true, incidents will not be investigated automatically.
-	DisableIncidentsAutoInvestigation bool `json:"disableIncidentsAutoInvestigation,omitempty"`
-}
-
 type SSOSpec struct {
 	Enabled bool `json:"enabled,omitempty"`
 	// Disable password login and only allow SSO authentication.
@@ -90,16 +76,16 @@ type OpenAICompatibleSpec struct {
 	Model string `json:"model"`
 }
 
-// +kubebuilder:validation:XValidation:rule="(has(self.memberProjects) && size(self.memberProjects) > 0 ? 1 : 0) + (has(self.remoteCoroot) ? 1 : 0) + (has(self.apiKeys) && size(self.apiKeys) > 0 ? 1 : 0) == 1",message="Exactly one of memberProjects, remoteCoroot, or apiKeys must be set."
+// +kubebuilder:validation:XValidation:rule="(has(self.memberProjects) && size(self.memberProjects) > 0 ? 1 : 0) + (has(self.remoteTelemetry) ? 1 : 0) + (has(self.apiKeys) && size(self.apiKeys) > 0 ? 1 : 0) == 1",message="Exactly one of memberProjects, remoteTelemetry, or apiKeys must be set."
 type ProjectSpec struct {
 	// Project name (e.g., production, staging; required).
 	// +kubebuilder:validation:Required
 	Name string `json:"name,omitempty"`
 	// Names of existing projects to aggregate (multi-cluster mode).
 	MemberProjects []string `json:"memberProjects,omitempty"`
-	// Use another Coroot instance as the data source for this project.
-	RemoteCoroot *RemoteCorootSpec `json:"remoteCoroot,omitempty"`
-	// Project API keys, used by agents to send telemetry data (required unless memberProjects or remoteCoroot is set).
+	// Use another Telemetry instance as the data source for this project.
+	RemoteTelemetry *RemoteTelemetrySpec `json:"remoteTelemetry,omitempty"`
+	// Project API keys, used by agents to send telemetry data (required unless memberProjects or remoteTelemetry is set).
 	ApiKeys []ApiKeySpec `json:"apiKeys,omitempty"`
 	// Notification integrations.
 	NotificationIntegrations *NotificationIntegrationsSpec `json:"notificationIntegrations,omitempty"`
@@ -122,11 +108,11 @@ type ApiKeySpec struct {
 	Description string `json:"description,omitempty"`
 }
 
-type RemoteCorootSpec struct {
-	// Base URL of the remote Coroot instance.
+type RemoteTelemetrySpec struct {
+	// Base URL of the remote Telemetry instance.
 	// +kubebuilder:validation:Pattern="^https?://.+$"
 	Url string `json:"url,omitempty"`
-	// Whether to skip verification of the Coroot server's TLS certificate.
+	// Whether to skip verification of the Telemetry server's TLS certificate.
 	TlsSkipVerify bool `json:"tlsSkipVerify,omitempty"`
 	// API key of the remote project.
 	ApiKey string `json:"apiKey,omitempty"`
@@ -138,7 +124,7 @@ type RemoteCorootSpec struct {
 }
 
 type NotificationIntegrationsSpec struct {
-	// The URL of Coroot instance (required). Used for generating links in notifications.
+	// The URL of Telemetry instance (required). Used for generating links in notifications.
 	// +kubebuilder:validation:Pattern="^https?://.+$"
 	BaseUrl string `json:"baseURL"`
 	// Slack configuration.

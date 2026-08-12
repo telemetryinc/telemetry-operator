@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	corootv1 "github.io/coroot/operator/api/v1"
+	telemetryv1 "github.com/telemetryinc/telemetry-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -13,8 +13,8 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-func (r *CorootReconciler) nodeAgentDaemonSet(cr *corootv1.Coroot) *appsv1.DaemonSet {
-	ls := Labels(cr, "coroot-node-agent")
+func (r *TelemetryReconciler) nodeAgentDaemonSet(cr *telemetryv1.Telemetry) *appsv1.DaemonSet {
+	ls := Labels(cr, "telemetry-node-agent")
 	ds := &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name + "-node-agent",
@@ -29,16 +29,16 @@ func (r *CorootReconciler) nodeAgentDaemonSet(cr *corootv1.Coroot) *appsv1.Daemo
 		scheme = "https"
 		port = cr.Spec.Service.HTTPSPort
 	}
-	corootURL := fmt.Sprintf("%s://%s-coroot.%s:%d", scheme, cr.Name, cr.Namespace, port)
-	if cr.Spec.AgentsOnly != nil && cr.Spec.AgentsOnly.CorootURL != "" {
-		corootURL = strings.TrimRight(cr.Spec.AgentsOnly.CorootURL, "/")
+	telemetryURL := fmt.Sprintf("%s://%s-telemetry.%s:%d", scheme, cr.Name, cr.Namespace, port)
+	if cr.Spec.AgentsOnly != nil && cr.Spec.AgentsOnly.TelemetryURL != "" {
+		telemetryURL = strings.TrimRight(cr.Spec.AgentsOnly.TelemetryURL, "/")
 	}
 	tlsSkipVerify := (cr.Spec.AgentsOnly != nil && cr.Spec.AgentsOnly.TLSSkipVerify) || (cr.Spec.NodeAgent.TLS != nil && cr.Spec.NodeAgent.TLS.TLSSkipVerify)
 	var caSecret *corev1.SecretKeySelector
 	if cr.Spec.NodeAgent.TLS != nil {
 		caSecret = cr.Spec.NodeAgent.TLS.CASecret
 	}
-	scrapeInterval := cmp.Or(cr.Spec.MetricsRefreshInterval, corootv1.DefaultMetricRefreshInterval)
+	scrapeInterval := cmp.Or(cr.Spec.MetricsRefreshInterval, telemetryv1.DefaultMetricRefreshInterval)
 	env := []corev1.EnvVar{
 		{Name: "SCRAPE_INTERVAL", Value: scrapeInterval},
 	}
@@ -49,23 +49,23 @@ func (r *CorootReconciler) nodeAgentDaemonSet(cr *corootv1.Coroot) *appsv1.Daemo
 		env = append(env, corev1.EnvVar{Name: "INSECURE_SKIP_VERIFY", Value: "true"})
 	}
 	if caSecret != nil {
-		env = append(env, corev1.EnvVar{Name: "CA_FILE", Value: "/etc/coroot-ca/ca.crt"})
+		env = append(env, corev1.EnvVar{Name: "CA_FILE", Value: "/etc/telemetry-ca/ca.crt"})
 	}
-	env = append(env, corev1.EnvVar{Name: "METRICS_ENDPOINT", Value: corootURL + "/v1/metrics"})
+	env = append(env, corev1.EnvVar{Name: "METRICS_ENDPOINT", Value: telemetryURL + "/v1/metrics"})
 	if v := cr.Spec.NodeAgent.LogCollector.CollectLogBasedMetrics; v != nil && !*v {
 		env = append(env, corev1.EnvVar{Name: "DISABLE_LOG_PARSING", Value: "true"})
 	}
 	if v := cr.Spec.NodeAgent.LogCollector.CollectLogEntries; v == nil || *v {
-		env = append(env, corev1.EnvVar{Name: "LOGS_ENDPOINT", Value: corootURL + "/v1/logs"})
+		env = append(env, corev1.EnvVar{Name: "LOGS_ENDPOINT", Value: telemetryURL + "/v1/logs"})
 	}
 	if v := cr.Spec.NodeAgent.EbpfTracer; v.Enabled == nil || *v.Enabled {
-		env = append(env, corev1.EnvVar{Name: "TRACES_ENDPOINT", Value: corootURL + "/v1/traces"})
+		env = append(env, corev1.EnvVar{Name: "TRACES_ENDPOINT", Value: telemetryURL + "/v1/traces"})
 		if v.Sampling != "" {
 			env = append(env, corev1.EnvVar{Name: "TRACES_SAMPLING", Value: v.Sampling})
 		}
 	}
 	if v := cr.Spec.NodeAgent.EbpfProfiler.Enabled; v == nil || *v {
-		env = append(env, corev1.EnvVar{Name: "PROFILES_ENDPOINT", Value: corootURL + "/v1/profiles"})
+		env = append(env, corev1.EnvVar{Name: "PROFILES_ENDPOINT", Value: telemetryURL + "/v1/profiles"})
 	}
 	if v := cr.Spec.NodeAgent.TrackPublicNetworks; len(v) > 0 {
 		env = append(env, corev1.EnvVar{Name: "TRACK_PUBLIC_NETWORK", Value: strings.Join(v, "\n")})
@@ -135,7 +135,7 @@ func (r *CorootReconciler) nodeAgentDaemonSet(cr *corootv1.Coroot) *appsv1.Daemo
 		},
 	}
 	if caSecret != nil {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: "ca", MountPath: "/etc/coroot-ca", ReadOnly: true})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: "ca", MountPath: "/etc/telemetry-ca", ReadOnly: true})
 		volumes = append(volumes, corev1.Volume{
 			Name: "ca",
 			VolumeSource: corev1.VolumeSource{

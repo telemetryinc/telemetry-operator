@@ -1,4 +1,4 @@
-module github.io/coroot/operator
+module github.com/telemetryinc/telemetry-operator
 
 go 1.24.9
 

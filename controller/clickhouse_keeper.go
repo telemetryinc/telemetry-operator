@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"text/template"
 
-	corootv1 "github.io/coroot/operator/api/v1"
+	telemetryv1 "github.com/telemetryinc/telemetry-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -13,14 +13,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func clickhouseKeeperReplicas(cr *corootv1.Coroot) int {
+func clickhouseKeeperReplicas(cr *telemetryv1.Telemetry) int {
 	if cr.Spec.Clickhouse.Keeper.Replicas > 0 {
 		return cr.Spec.Clickhouse.Keeper.Replicas
 	}
 	return 3
 }
 
-func (r *CorootReconciler) clickhouseKeeperServiceHeadless(cr *corootv1.Coroot) *corev1.Service {
+func (r *TelemetryReconciler) clickhouseKeeperServiceHeadless(cr *telemetryv1.Telemetry) *corev1.Service {
 	ls := Labels(cr, "clickhouse-keeper")
 	s := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -54,7 +54,7 @@ func (r *CorootReconciler) clickhouseKeeperServiceHeadless(cr *corootv1.Coroot) 
 	return s
 }
 
-func (r *CorootReconciler) clickhouseKeeperPVCs(cr *corootv1.Coroot) []*corev1.PersistentVolumeClaim {
+func (r *TelemetryReconciler) clickhouseKeeperPVCs(cr *telemetryv1.Telemetry) []*corev1.PersistentVolumeClaim {
 	ls := Labels(cr, "clickhouse-keeper")
 	size := cr.Spec.Clickhouse.Keeper.Storage.Size
 	if size.IsZero() {
@@ -85,7 +85,7 @@ func (r *CorootReconciler) clickhouseKeeperPVCs(cr *corootv1.Coroot) []*corev1.P
 	return res
 }
 
-func (r *CorootReconciler) clickhouseKeeperStatefulSet(cr *corootv1.Coroot) *appsv1.StatefulSet {
+func (r *TelemetryReconciler) clickhouseKeeperStatefulSet(cr *telemetryv1.Telemetry) *appsv1.StatefulSet {
 	ls := Labels(cr, "clickhouse-keeper")
 	ss := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -178,7 +178,7 @@ func (r *CorootReconciler) clickhouseKeeperStatefulSet(cr *corootv1.Coroot) *app
 	return ss
 }
 
-func clickhouseKeeperConfigCmd(filename string, cr *corootv1.Coroot, replicas int) string {
+func clickhouseKeeperConfigCmd(filename string, cr *telemetryv1.Telemetry, replicas int) string {
 	params := struct {
 		Namespace string
 		Name      string
